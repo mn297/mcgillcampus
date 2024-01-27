@@ -16,8 +16,8 @@
 	}
 
 	// Hardcoded values for day and time
-	const day = "Monday";
-	const time = "10:30 AM";
+	// const day = "Monday";
+	// const time = "10:30 AM";
 	onMount(async () => {
 		if (container) {
 			map = new google.maps.Map(container, {
