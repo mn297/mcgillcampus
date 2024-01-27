@@ -1,11 +1,16 @@
 <script lang="ts">
 	import { onMount } from "svelte";
+	import { MarkerClusterer } from "@googlemaps/markerclusterer";
 
 	let container: HTMLElement | null;
+
 	let map: google.maps.Map | undefined;
 	let zoom = 16;
 	let center: google.maps.LatLngLiteral = { lat: 45.5053, lng: -73.5775 };
 	let markerPosition: google.maps.LatLngLiteral | undefined;
+	let markers = []; // Global array to hold markers
+	let markerCluster: MarkerClusterer | undefined;
+
 	let searchQuery = "";
 	let timeValue = 0; // Slider value
 	let selectedDay = "Monday"; // Default value
@@ -58,6 +63,7 @@
 					const courseData = await response.json();
 					console.log("courseData:", courseData);
 					// Process courseData to display on the map
+					// Add some markers to the map.
 				} else {
 					console.error(
 						"Failed to get courseData:",
@@ -86,8 +92,45 @@
 		// Replace this with your API call
 	}
 
+	// Sets the map on all markers in the array.
+	function setMapOnAll(map) {
+		for (let i = 0; i < markers.length; i++) {
+			markers[i].setMap(map);
+		}
+	}
+
+	// Removes the markers from the map, but keeps them in the array.
+	function hideMarkers() {
+		setMapOnAll(null);
+	}
+
+	// Shows any markers currently in the array.
+	function showMarkers() {
+		setMapOnAll(map);
+	}
+
+	function cleanUp() {
+		hideMarkers();
+		markers = [];
+		if (markerCluster) {
+			markerCluster.clearMarkers();
+		}
+	}
+
+	// Deletes all markers in the array by removing references to them.
+	function deleteMarkers() {
+		hideMarkers();
+		markers = [];
+	}
+
 	// Button event handler
 	async function handleUpdate() {
+		// Clear existing markers
+		cleanUp();
+
+		const { AdvancedMarkerElement } = (await google.maps.importLibrary(
+			"marker",
+		)) as google.maps.MarkerLibrary;
 		const formattedTime = formatTime(timeValue);
 		console.log(
 			"Selected Day:",
@@ -106,6 +149,56 @@
 				const courseData = await response.json();
 				console.log("Updated courseData:", courseData);
 				// Process courseData to display on the map
+				const infoWindow = new google.maps.InfoWindow({
+					content: "",
+					disableAutoPan: true,
+				});
+				const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+				const newMarkers = courseData.map((data, i) => {
+					const label = labels[i % labels.length];
+					const pinGlyph = new google.maps.marker.PinElement({
+						glyph: label,
+						glyphColor: "white",
+					});
+
+					// Ensure latitude and longitude are parsed as numbers
+					const lat = parseFloat(data.latitude);
+					const lng = parseFloat(data.longitude);
+
+					// Debugging: Log the values and their types
+					console.log(`Latitude: ${lat}, Longitude: ${lng}`);
+					console.log(
+						`Type of Latitude: ${typeof lat}, Type of Longitude: ${typeof lng}`,
+					);
+
+					// Check if lat and lng are valid numbers
+					if (isNaN(lat) || isNaN(lng)) {
+						console.error("Invalid latitude or longitude");
+						return null; // Skip this iteration
+					}
+
+					const position = { lat, lng };
+
+					const marker = new AdvancedMarkerElement({
+						position, // Using the transformed position
+						map: map,
+						content: pinGlyph.element,
+					});
+
+					marker.addListener("click", () => {
+						infoWindow.setContent(`${lat}, ${lng}`);
+						infoWindow.open(map, marker);
+					});
+
+					return marker;
+				});
+				// Update global markers array with new markers
+				markers = newMarkers;
+
+				// Add a marker clusterer to manage the markers.
+				markerCluster = new MarkerClusterer({ markers, map });
+				// new MarkerClusterer({ newMarkers, map });
 			} else {
 				console.error("Failed to get courseData:", response.statusText);
 			}
