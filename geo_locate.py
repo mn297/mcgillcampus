@@ -1,7 +1,6 @@
 # HELPERS FOR GEOLOCATION
 
 import requests
-# import folium
 
 def fetch_coordinates(address):
     """Fetch coordinates (latitude, longitude) for a given address, limited to Montreal Island."""
