@@ -13,13 +13,23 @@
   >
   </script>
 </svelte:head>
-
-{#if ready}
-  <Map></Map>
-{/if}
+<body>
+  <h1 class="text">The McGill Map</h1>
+  {#if ready}
+    <Map></Map>
+  {/if}
+</body>
 
 <style>
   :global(body) {
     padding: 0;
+  }
+  .text {
+    font-family: "Bookman", serif;
+    font-size: 2rem;
+    margin: 0;
+    padding: 1rem;
+    background-color: red;
+    color: white;
   }
 </style>
