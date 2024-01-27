@@ -4,6 +4,7 @@
   let zoom = 16;
   let center: google.maps.LatLngLiteral = { lat: 45.5053, lng: -73.5775 };
   let markerPosition: google.maps.LatLngLiteral | undefined;
+  let searchQuery = "";
   import { onMount } from "svelte";
 
   onMount(async () => {
@@ -33,8 +34,20 @@
       });
     }
   });
+  function handleSearch() {
+		console.log("Search query:", searchQuery);
+		// Future implementation: Use searchQuery to perform a search
+	}
 </script>
 
+<div class="search-container">
+	<input
+		type="text"
+		placeholder="Search location..."
+		bind:value={searchQuery}
+		on:input={handleSearch}
+	/>
+</div>
 <div class="full-screen" bind:this={container}></div>
 
 <style>
@@ -42,4 +55,17 @@
     width: 50vw;
     height: 50vh;
   }
+	.search-container {
+		position: absolute;
+		top: 10px;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 10;
+	}
+
+	.search-container input[type="text"] {
+		padding: 10px;
+		width: 300px;
+		font-size: 1rem;
+	}
 </style>

@@ -4,6 +4,26 @@ from mysql.connector import Error
 from datetime import datetime
 import geo_locate
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def process_time_range(time_range_str):
+    try:
+        # Check if the time range is not a standard time format (e.g., 'TBA')
+        if "TBA" in time_range_str.upper() or not "-" in time_range_str:
+            return None, None
+
+        # Split the time range into start and end times
+        start_time_str, end_time_str = time_range_str.split("-")
+
+        # Convert time strings into time objects
+        start_time = datetime.strptime(start_time_str.strip(), "%I:%M %p").time()
+        end_time = datetime.strptime(end_time_str.strip(), "%I:%M %p").time()
+        return start_time, end_time
+    except ValueError:
+        print(f"Error while processing time range: {time_range_str}")
+        return None, None
 
 
 # Fetching environment variables
@@ -87,6 +107,110 @@ def create_table_if_not_exists(connection):
     cursor.execute(create_locations_table)
     cursor.execute(create_sections_table)
     cursor.close()
+
+
+def insert_course_data(connection, course_data, row_number):
+    try:
+        cursor = connection.cursor()
+        # Parse and clean the 'Credits' data
+        credits_str = course_data["credits"].split("/")[
+            0
+        ]  # Taking the first part before '/'
+        credits = float(credits_str) if credits_str else 0.0
+
+        # Update the course_data dictionary with the cleaned credits
+        course_data["credits"] = credits
+
+        query = """INSERT INTO courses (crn, subject, course, title, credits) 
+                   VALUES (%(crn)s, %(subject)s, %(course)s, %(title)s, %(credits)s) 
+                   ON DUPLICATE KEY UPDATE title=VALUES(title), credits=VALUES(credits);"""
+        cursor.execute(query, course_data)
+        connection.commit()
+    except Error as e:
+        print(f"Error while inserting course data at CSV row {row_number}: {e}")
+
+
+def insert_location_data(connection, location_name):
+    try:
+        cursor = connection.cursor()
+        # Check if the location already exists
+        cursor.execute(
+            "SELECT location_id FROM locations WHERE location_name = %s",
+            (location_name,),
+        )
+        location_id = cursor.fetchone()
+        if location_id:
+            return location_id[0]  # Return existing LocationID
+
+        # If not, insert the new location
+        cursor.execute(
+            "INSERT INTO locations (location_name) VALUES (%s)", (location_name,)
+        )
+        connection.commit()
+        return cursor.lastrowid  # Return the new LocationID
+    except Error as e:
+        print(f"Error while inserting location data: {e}")
+        return None
+
+
+def update_db_search_keyword(connection, csv_file_path):
+    with open(csv_file_path, mode="r", encoding="utf-8") as csvfile:
+        csv_reader = csv.DictReader(csvfile)
+        for row in csv_reader:
+            location_name = row["building"]
+            search_keyword = row["search_keyword"]
+            try:
+                cursor = connection.cursor()
+                # Extract the building code (assumed to be the first word of the location_name)
+                building_code = location_name.split()[0]
+
+                # Update database, change existing location with building and search_keyword using location_name
+                cursor.execute(
+                    "UPDATE locations SET building = %s, search_keyword = %s WHERE location_name LIKE %s",
+                    (building_code, search_keyword, location_name + "%"),
+                )
+                connection.commit()
+                print(f"Location data updated for: {location_name}")
+            except Error as e:
+                print(f"Error while updating location data: {e}")
+
+
+# TODO support for google maps API
+def update_db_location_coordinates(connection):
+    try:
+        cursor = connection.cursor()
+        # Fetch unique buildings along with their corresponding search_keywords
+        cursor.execute(
+            # "SELECT DISTINCT building, search_keyword FROM locations WHERE latitude IS NULL OR longitude IS NULL"
+            "SELECT DISTINCT building, search_keyword FROM locations"
+        )
+        unique_buildings = cursor.fetchall()
+
+        for building, search_keyword in unique_buildings:
+            if search_keyword:  # Ensure search_keyword is not None or empty
+                latitude, longitude = geo_locate.fetch_coordinates(
+                    search_keyword + ", Montreal"
+                )
+                print(f"Coordinates for '{search_keyword}': {latitude}, {longitude}")
+                if latitude and longitude:
+                    # Update database with the coordinates
+                    update_query = "UPDATE locations SET latitude = %s, longitude = %s WHERE building = %s"
+                    cursor.execute(update_query, (latitude, longitude, building))
+                    connection.commit()
+                    print(
+                        f"Updated all locations with building '{building}' '{search_keyword}' to coordinates: {latitude}, {longitude}"
+                    )
+                else:
+                    print(
+                        f"Could not find coordinates for building '{building}' with search keyword '{search_keyword}'"
+                    )
+            else:
+                print(f"No search keyword for building '{building}'")
+
+    except Error as e:
+        print(f"Error updating location coordinates: {e}")
+
+
 def cleanup_tables(connection):
     try:
         cursor = connection.cursor()
@@ -114,19 +238,176 @@ def cleanup_tables(connection):
     except Error as e:
         print(f"Error during cleanup: {e}")
 
+
+def insert_section_data(connection, section_data, row_number):
+    try:
+        cursor = connection.cursor()
+        location_id = insert_location_data(connection, section_data["location_name"])
+
+        # Process the time range from the 'time' key in section_data
+        time_start, time_end = process_time_range(section_data["time"])
+
+        # Build the data tuple for insertion, ensuring all keys match your table columns
+        section_data_tuple = (
+            section_data["crn"],
+            section_data["subject"],
+            section_data["course"],
+            section_data["section"],
+            section_data["type"],
+            section_data["instructor"][:255],  # Truncate if necessary
+            section_data["days"],
+            section_data["time"],
+            time_start,  # Start Time
+            time_end,  # End Time
+            location_id,
+        )
+
+        query = """INSERT INTO sections (crn, subject, course, section, type, instructor, days, time, time_start, time_end, location_id) 
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
+                   ON DUPLICATE KEY UPDATE 
+                     type=VALUES(type), 
+                     instructor=VALUES(instructor), 
+                     days=VALUES(days), 
+                     time=VALUES(time),
+                     time_start=VALUES(time_start), 
+                     time_end=VALUES(time_end), 
+                     location_id=VALUES(location_id);"""
+        cursor.execute(query, section_data_tuple)
+        connection.commit()
+    except Error as e:
+        print(f"Error while inserting section data at CSV row {row_number}: {e}")
+
+
+def is_title_row(row):
+    return row[0] == "CRN"
+
+
+def is_valid_row(row):
+    return len(row) > 5
+
+
+day_formats = {
+    "Monday": "M",
+    "Tuesday": "T",
+    "Wednesday": "W",
+    "Thursday": "R",
+    "Friday": "F",
+    # Add more mappings as needed
+}
+
+
+def get_courses_at_given_time_with_location(connection, given_day, given_time):
+    try:
+        cursor = connection.cursor()
+        # Format the day to match the format used in your database (e.g., 'T' for Tuesday)
+        day_format = day_formats[given_day]
+
+        # Modify the query to join with the locations table and select latitude and longitude
+        query = """
+                SELECT sections.*, locations.location_name, locations.latitude, locations.longitude 
+                FROM sections 
+                INNER JOIN locations ON sections.location_id = locations.location_id
+                WHERE sections.days LIKE %s 
+                AND sections.time_start <= %s 
+                AND sections.time_end >= %s
+                """
+        cursor.execute(query, ("%" + day_format + "%", given_time, given_time))
+
+        # Fetch column names from cursor.description
+        columns = [col[0] for col in cursor.description]
+
+        courses = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return courses  # Returns a list of courses with location data as dictionaries
+
+    except Error as e:
+        print(f"Error: {e}")
+        return []
+
+
+def get_courses_at_given_time_with_location_for_day(connection, given_day):
+    try:
+        cursor = connection.cursor()
+        # Format the day to match the format used in your database (e.g., 'T' for Tuesday)
+        day_format = day_formats[given_day]
+
+        # Modify the query to join with the locations table and select latitude and longitude
+        query = """
+                SELECT sections.*, locations.location_name, locations.latitude, locations.longitude 
+                FROM sections 
+                INNER JOIN locations ON sections.location_id = locations.location_id
+                WHERE sections.days LIKE CONCAT('%', %s, '%')
+                """
+        cursor.execute(query, (day_format,))
+
+        # Fetch column names from cursor.description
+        columns = [col[0] for col in cursor.description]
+
+        courses = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return courses  # Returns a list of courses with location data as dictionaries
+
+    except Error as e:
+        print(f"Error: {e}")
+        return []
+
+
+# CSV Column Index Mapping:
+# 0 = CRN (Course Reference Number)
+# 1 = Subject (Subject Code)
+# 2 = Course (Course Number)
+# 3 = Section (Section Number)
+# 4 = Type (Type of the Course, e.g., Lecture, Seminar)
+# 5 = Credits (Number of Credits for the Course)
+# 6 = Title (Title of the Course)
+# 7 = Days (Days when the Course is conducted)
+# 8 = Time (Time of the Course)
+# 9 = Capacity (Maximum number of students that can enroll)
+# 10 = WL Capacity (Waitlist Capacity)
+# 11 = WL Actual (Actual number of students on the Waitlist)
+# 12 = WL Remaining (Remaining spots on the Waitlist)
+# 13 = Instructor (Name of the Instructor)
+# 14 = Date (Date range for the Course, format MM/DD-MM/DD)
+# 15 = Location (Location of the Course)
+# 16 = Status (Status of the Course, e.g., Active, Cancelled)
+
+
+def import_csv_data(connection, csv_file_path):
+    with open(csv_file_path, mode="r", errors="replace") as file:
+        csv_reader = csv.reader(file)
+        for row_number, row in enumerate(csv_reader, start=1):  # Start counting from 1
+            if is_title_row(row) or not is_valid_row(row):
+                continue
+            section_data = {
+                "crn": row[0],
+                "subject": row[1],
+                "course": row[2],
+                "section": row[3],
+                "type": row[4],
+                "credits": row[5],
+                "title": row[6],
+                "days": row[7],
+                "time": row[8],
+                "capacity": row[9],
+                "wl_capacity": row[10],
+                "wl_actual": row[11],
+                "wl_remaining": row[12],
+                "instructor": row[13],
+                "date": row[14],
+                "location_name": row[15],
+            }
+            insert_course_data(connection, section_data, row_number)
+            insert_section_data(connection, section_data, row_number)
+
+
 def main():
     connection = connect_to_database()
-    if connection:
-        cursor = connection.cursor()
-        cursor.execute("SELECT * FROM location")
-        result = cursor.fetchall()
-        for row in result:
-            print(row)
-        cursor.close()
+    if connection is not None:
+        create_table_if_not_exists(connection)
+        import_csv_data(connection, "A_H_F23.csv")
+        import_csv_data(connection, "I_Z_F23.csv")
+        update_db_search_keyword(connection, "buildings_dict.csv")
+        update_db_location_coordinates(connection)
+        cleanup_tables(connection)
         connection.close()
-    else:
-        print("Error while connecting to MySQL")
-
 
 
 if __name__ == "__main__":
