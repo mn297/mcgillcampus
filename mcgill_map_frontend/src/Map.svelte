@@ -3,6 +3,7 @@
   let map: google.maps.Map | undefined;
   let zoom = 16;
   let center: google.maps.LatLngLiteral = { lat: 45.5053, lng: -73.5775 };
+  let markerPosition: google.maps.LatLngLiteral | undefined;
   import { onMount } from "svelte";
 
   onMount(async () => {
@@ -15,12 +16,19 @@
       const { AdvancedMarkerElement } = (await google.maps.importLibrary(
         "marker"
       )) as google.maps.MarkerLibrary;
-      let initialPosition: google.maps.LatLngLiteral = {
-        lat: 45.50741936700414,
-        lng: -73.5791031897402,
-      };
+      try {
+        const response = await fetch("http://127.0.0.1:8000/get_lat_long");
+        if (response.ok) {
+          markerPosition = await response.json();
+          console.log("Marker Position:", markerPosition);
+        } else {
+          console.error("Failed to get marker position:", response.statusText);
+        }
+      } catch (error) {
+        console.error("Error:", error);
+      }
       const marker = new AdvancedMarkerElement({
-        position: initialPosition,
+        position: markerPosition,
         map: map,
       });
     }
@@ -31,7 +39,7 @@
 
 <style>
   .full-screen {
-    width: 100vw;
-    height: 100vh;
+    width: 50vw;
+    height: 50vh;
   }
 </style>
