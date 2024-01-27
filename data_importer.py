@@ -6,7 +6,7 @@ import geo_locate
 import os
 from dotenv import load_dotenv
 
-
+load_dotenv()
 
 def process_time_range(time_range_str):
     try:
