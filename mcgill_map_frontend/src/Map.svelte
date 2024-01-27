@@ -186,13 +186,26 @@
 						content: pinGlyph.element,
 					});
 
+					// Format the content to display in the InfoWindow
+					const infoContent = `
+						<div>
+						<h3>${data.subject} ${data.course}</h3>
+						<p>Location: ${data.location_name}</p>
+						<p>Additional Info: ${data.additional_info}</p>
+						<!-- Add more fields as necessary -->
+						</div>
+					`;
+
+					// Set the content of the InfoWindow on marker click
 					marker.addListener("click", () => {
-						infoWindow.setContent(`${lat}, ${lng}`);
+						infoWindow.setContent(infoContent);
+						// 	infoWindow.setContent(`${lat}, ${lng}`);
 						infoWindow.open(map, marker);
 					});
 
 					return marker;
 				});
+
 				// Update global markers array with new markers
 				markers = newMarkers;
 
