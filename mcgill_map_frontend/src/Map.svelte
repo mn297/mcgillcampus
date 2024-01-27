@@ -153,10 +153,12 @@
 					content: "",
 					disableAutoPan: true,
 				});
-				const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 				const newMarkers = courseData.map((data, i) => {
-					const label = labels[i % labels.length];
+					const label = `${data.subject.substring(
+						0,
+						2,
+					)}${data.course.substring(0, 2)}`;
 					const pinGlyph = new google.maps.marker.PinElement({
 						glyph: label,
 						glyphColor: "white",
