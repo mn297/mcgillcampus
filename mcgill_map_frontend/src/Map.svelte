@@ -15,8 +15,12 @@
       const { AdvancedMarkerElement } = (await google.maps.importLibrary(
         "marker"
       )) as google.maps.MarkerLibrary;
+      let initialPosition: google.maps.LatLngLiteral = {
+        lat: 45.50741936700414,
+        lng: -73.5791031897402,
+      };
       const marker = new AdvancedMarkerElement({
-        position: center,
+        position: initialPosition,
         map: map,
       });
     }
