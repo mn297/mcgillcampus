@@ -87,7 +87,32 @@ def create_table_if_not_exists(connection):
     cursor.execute(create_locations_table)
     cursor.execute(create_sections_table)
     cursor.close()
+def cleanup_tables(connection):
+    try:
+        cursor = connection.cursor()
 
+        # Find the location_id for 'TBA' locations
+        cursor.execute("SELECT location_id FROM locations WHERE location_name = 'TBA'")
+        tba_location_id = cursor.fetchone()
+
+        # List of tables to clean up (add or remove table names as necessary)
+        tables_to_cleanup = ["sections"]
+
+        # Delete rows from each table where location_id matches TBA location_id, or time/days are 'TBA'
+        for table in tables_to_cleanup:
+            if tba_location_id:
+                tba_location_id_value = tba_location_id[0]
+                delete_query = f"DELETE FROM {table} WHERE location_id = %s OR time = 'TBA' OR days = 'TBA'"
+                cursor.execute(delete_query, (tba_location_id_value,))
+            else:
+                delete_query = f"DELETE FROM {table} WHERE time = 'TBA' OR days = 'TBA'"
+                cursor.execute(delete_query)
+
+            connection.commit()
+            print(f"Cleaned up table '{table}' for TBA locations and TBA times/days.")
+
+    except Error as e:
+        print(f"Error during cleanup: {e}")
 
 def main():
     connection = connect_to_database()
