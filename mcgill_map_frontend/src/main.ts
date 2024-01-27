@@ -1,8 +1,24 @@
-import './app.css'
-import App from './App.svelte'
+import App from './App.svelte';
+
+interface AppProps {
+  ready: boolean;
+}
 
 const app = new App({
-  target: document.getElementById('app'),
-})
+  target: document.body,
+  props: {
+    ready: false,
+  } as AppProps,
+});
 
-export default app
+declare global {
+  interface Window {
+    initMap: () => void;
+  }
+}
+
+window.initMap = function ready() {
+  app.$set({ ready: true });
+};
+
+export default app;
