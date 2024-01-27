@@ -20,5 +20,4 @@ declare global {
 window.initMap = function ready() {
   app.$set({ ready: true });
 };
-
 export default app;

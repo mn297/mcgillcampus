@@ -15,7 +15,6 @@
 {#if ready}
   <Map></Map>
 {/if}
-
 <style>
   :global(body) {
     padding: 0;
