@@ -7,6 +7,10 @@
 	let searchQuery = "";
 	import { onMount } from "svelte";
 
+	// Hardcoded values for day and time
+	const day = "Monday";
+	const time = "10:30 AM";
+
 	onMount(async () => {
 		if (container) {
 			map = new google.maps.Map(container, {
@@ -37,13 +41,17 @@
 			}
 
 			// test data
+			// Fetch course data
 			try {
-				const response = await fetch("http://127.0.0.1:8000/get_data", {
-					mode: 'no-cors'
-				});
+				const response = await fetch(
+					`http://127.0.0.1:8000/get_data?day=${encodeURIComponent(
+						day,
+					)}&time=${encodeURIComponent(time)}`,
+				);
 				if (response.ok) {
-					courseData = await response.json();
+					const courseData = await response.json();
 					console.log("courseData:", courseData);
+					// Process courseData to display on the map
 				} else {
 					console.error(
 						"Failed to get courseData:",

@@ -6,11 +6,24 @@ import random
 from decimal import Decimal
 import sys
 import json
+from datetime import timedelta
 
 import data_importer
 
 app = Flask(__name__, static_url_path="/static")
 CORS(app)
+
+
+def timedelta_to_str(td: timedelta) -> str:
+    """
+    Converts a timedelta object to a string representation.
+    Format: 'HH:MM:SS'
+    """
+    total_seconds = int(td.total_seconds())
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 @app.route("/")
@@ -56,6 +69,10 @@ def get_data():
             print("No courses with valid coordinates to display on the map.")
             sys.exit(1)
         for course in valid_courses:
+            # timedelta not JSON serializable, convert to string
+            course["time_start"] = timedelta_to_str(course["time_start"])
+            course["time_end"] = timedelta_to_str(course["time_end"])
+
             loc_key = (course["latitude"], course["longitude"])
             if loc_key in seen_locations:
                 # Apply a small random offset, converting the offset to Decimal
@@ -66,9 +83,13 @@ def get_data():
             else:
                 seen_locations[loc_key] = True
 
-        # return jsonify(valid_courses)
-        return json.dumps(valid_courses)
-
+        return jsonify(valid_courses)
+        try:
+            return json.dumps(valid_courses)
+        except TypeError as e:
+            print(e)
+            print("Error converting to JSON")
+            sys.exit(1)
 
 if __name__ == "__main__":
     app.run(port=8000, debug=True)
