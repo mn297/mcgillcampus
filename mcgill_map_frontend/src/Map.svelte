@@ -12,7 +12,7 @@
       map = new google.maps.Map(container, {
         zoom,
         center,
-        mapId: "McGillMap",
+        mapId: "a25abe7f61616f26",
       });
       const { AdvancedMarkerElement } = (await google.maps.importLibrary(
         "marker"
@@ -35,37 +35,37 @@
     }
   });
   function handleSearch() {
-		console.log("Search query:", searchQuery);
-		// Future implementation: Use searchQuery to perform a search
-	}
+    console.log("Search query:", searchQuery);
+    // Future implementation: Use searchQuery to perform a search
+  }
 </script>
 
 <div class="search-container">
-	<input
-		type="text"
-		placeholder="Search location..."
-		bind:value={searchQuery}
-		on:input={handleSearch}
-	/>
+  <input
+    type="text"
+    placeholder="Search location..."
+    bind:value={searchQuery}
+    on:input={handleSearch}
+  />
 </div>
 <div class="full-screen" bind:this={container}></div>
 
 <style>
   .full-screen {
-    width: 50vw;
-    height: 50vh;
+    width: 97vw;
+    height: 90vh;
   }
-	.search-container {
-		position: absolute;
-		top: 10px;
-		left: 50%;
-		transform: translateX(-50%);
-		z-index: 10;
-	}
+  .search-container {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+  }
 
-	.search-container input[type="text"] {
-		padding: 10px;
-		width: 300px;
-		font-size: 1rem;
-	}
+  .search-container input[type="text"] {
+    padding: 10px;
+    width: 300px;
+    font-size: 1rem;
+  }
 </style>
