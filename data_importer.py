@@ -9,7 +9,7 @@ import os
 # Fetching environment variables
 db_host = os.getenv("DB_HOST")
 db_user = os.getenv("DB_USER")
-db_password = os.getenv('DB_PASSWORD')
+db_password = os.getenv("DB_PASSWORD")
 db_name = os.getenv("DB_NAME")
 
 
@@ -21,7 +21,7 @@ def connect_to_database():
         #     user="root",  # Replace with your username
         #     password= db_password,
         # )  # Replace with your password
-        
+
         connection = mysql.connector.connect(
             host=db_host, user=db_user, password=db_password, database=db_name
         )
@@ -87,6 +87,8 @@ def create_table_if_not_exists(connection):
     cursor.execute(create_locations_table)
     cursor.execute(create_sections_table)
     cursor.close()
+
+
 def cleanup_tables(connection):
     try:
         cursor = connection.cursor()
@@ -114,6 +116,43 @@ def cleanup_tables(connection):
     except Error as e:
         print(f"Error during cleanup: {e}")
 
+
+def is_title_row(row):
+    return row[0] == "CRN"
+
+
+def is_valid_row(row):
+    return len(row) > 5
+
+
+def import_csv_data(connection, csv_file_path):
+    with open(csv_file_path, mode="r", errors="replace") as file:
+        csv_reader = csv.reader(file)
+        for row_number, row in enumerate(csv_reader, start=1):  # Start counting from 1
+            if is_title_row(row) or not is_valid_row(row):
+                continue
+            section_data = {
+                "crn": row[0],
+                "subject": row[1],
+                "course": row[2],
+                "section": row[3],
+                "type": row[4],
+                "credits": row[5],
+                "title": row[6],
+                "days": row[7],
+                "time": row[8],
+                "capacity": row[9],
+                "wl_capacity": row[10],
+                "wl_actual": row[11],
+                "wl_remaining": row[12],
+                "instructor": row[13],
+                "date": row[14],
+                "location_name": row[15],
+            }
+            insert_course_data(connection, section_data, row_number)
+            insert_section_data(connection, section_data, row_number)
+
+
 def main():
     connection = connect_to_database()
     if connection:
@@ -126,7 +165,6 @@ def main():
         connection.close()
     else:
         print("Error while connecting to MySQL")
-
 
 
 if __name__ == "__main__":
