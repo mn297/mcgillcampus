@@ -17,6 +17,8 @@
 			const { AdvancedMarkerElement } = (await google.maps.importLibrary(
 				"marker",
 			)) as google.maps.MarkerLibrary;
+
+			// test marker position
 			try {
 				const response = await fetch(
 					"http://127.0.0.1:8000/get_lat_long",
@@ -33,6 +35,25 @@
 			} catch (error) {
 				console.error("Error:", error);
 			}
+
+			// test data
+			try {
+				const response = await fetch("http://127.0.0.1:8000/get_data", {
+					mode: 'no-cors'
+				});
+				if (response.ok) {
+					courseData = await response.json();
+					console.log("courseData:", courseData);
+				} else {
+					console.error(
+						"Failed to get courseData:",
+						response.statusText,
+					);
+				}
+			} catch (error) {
+				console.error("Error:", error);
+			}
+
 			const marker = new AdvancedMarkerElement({
 				position: markerPosition,
 				map: map,
