@@ -2,6 +2,7 @@
 
 import requests
 
+
 def fetch_coordinates(address):
     """Fetch coordinates (latitude, longitude) for a given address, limited to Montreal Island."""
     # Format the address to include 'Montreal' for location biasing
@@ -21,20 +22,17 @@ def fetch_coordinates(address):
 
         # Get the first result
         result = data[0]
-        latitude = result['lat']
-        longitude = result['lon']
+        latitude = result["lat"]
+        longitude = result["lon"]
         return latitude, longitude
     except requests.RequestException as e:
         print(f"Error fetching coordinates for address {address}: {e}")
         return None, None
-    
+
+
 def get_location_polygon(query):
-    url = 'https://nominatim.openstreetmap.org/search'
-    params = {
-        'q': query,
-        'format': 'json',
-        'polygon_geojson': 1
-    }
+    url = "https://nominatim.openstreetmap.org/search"
+    params = {"q": query, "format": "json", "polygon_geojson": 1}
     # https://nominatim.openstreetmap.org/search?q=McGill+University&format=json&polygon_geojson=1
     response = requests.get(url, params=params)
 
@@ -43,5 +41,5 @@ def get_location_polygon(query):
         data = response.json()
         if data:
             # Assuming the first result is the desired one
-            return data[0].get('geojson')
+            return data[0].get("geojson")
     return None
