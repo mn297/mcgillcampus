@@ -402,8 +402,8 @@ def main():
     connection = connect_to_database()
     if connection is not None:
         create_table_if_not_exists(connection)
-        import_csv_data(connection, "A_H_F23.csv")
-        import_csv_data(connection, "I_Z_F23.csv")
+        import_csv_data(connection, "A_H_W24.csv")
+        import_csv_data(connection, "I_Z_W24.csv")
         update_db_search_keyword(connection, "buildings_dict.csv")
         update_db_location_coordinates(connection)
         cleanup_tables(connection)
