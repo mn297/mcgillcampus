@@ -12,7 +12,7 @@
   let markerCluster: MarkerClusterer | undefined;
 
   let searchQuery = "";
-  let timeValue = 0; // Slider value
+  let timeValue = 515; // Slider value
   let selectedDay = "Monday"; // Default value
 
   // Function to convert slider value to time string
