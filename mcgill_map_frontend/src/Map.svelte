@@ -236,40 +236,41 @@
   }
 </script>
 
-<button on:click={handleUpdate}>Update</button>
+<div class="container">
+  <div class="date-selector">
+    <select class="select" bind:value={selectedDay}>
+      <option value="Monday">Monday</option>
+      <option value="Tuesday">Tuesday</option>
+      <option value="Wednesday">Wednesday</option>
+      <option value="Thursday">Thursday</option>
+      <option value="Friday">Friday</option>
+      <option value="Saturday">Saturday</option>
+      <option value="Sunday">Sunday</option>
+    </select>
+  </div>
 
-<div class="time-slider">
-  <input
-    type="range"
-    min="0"
-    max="1440"
-    step="15"
-    bind:value={timeValue}
-    on:change={updateTime}
-  />
-  <p>Selected Time: {formatTime(timeValue)}</p>
+  <button class="button" on:click={handleUpdate}>Update</button>
+  <div class="time-slider">
+    <input
+      type="range"
+      min="0"
+      max="1440"
+      step="15"
+      bind:value={timeValue}
+      on:change={updateTime}
+    />
+    <p class="time-slider-text">Selected Time: {formatTime(timeValue)}</p>
+  </div>
+  <div class="search-container">
+    <input
+      type="text"
+      placeholder="Search location..."
+      bind:value={searchQuery}
+      on:input={handleSearch}
+    />
+  </div>
 </div>
 
-<div class="date-selector">
-  <select bind:value={selectedDay}>
-    <option value="Monday">Monday</option>
-    <option value="Tuesday">Tuesday</option>
-    <option value="Wednesday">Wednesday</option>
-    <option value="Thursday">Thursday</option>
-    <option value="Friday">Friday</option>
-    <option value="Saturday">Saturday</option>
-    <option value="Sunday">Sunday</option>
-  </select>
-</div>
-
-<div class="search-container">
-  <input
-    type="text"
-    placeholder="Search location..."
-    bind:value={searchQuery}
-    on:input={handleSearch}
-  />
-</div>
 <div class="full-screen" bind:this={container}></div>
 
 <style>
@@ -310,5 +311,41 @@
     padding: 10px;
     width: 300px;
     font-size: 1rem;
+  }
+  .button {
+    background-color: #4caf50;
+    /* Green */
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    /* display: inline-block; */
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 100px;
+  }
+  .select {
+    background-color: blue;
+    /* Green */
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    /* text-align: center; */
+    text-decoration: none;
+    /* display: inline-block; */
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 100px;
+  }
+  .container {
+    display: flex;
+    gap: 10px; /* Adjust the gap between elements */
+  }
+  .time-slider-text {
+    font-family: Arial, Helvetica, sans-serif;
+    color: blue;
   }
 </style>
