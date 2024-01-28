@@ -348,108 +348,108 @@
                         <p>Instructor: ${data.instructor}</p>
                         <p>Capacity: ${data.capacity}</p>
                         <p>CRN: ${data.crn}</p>
+                        <p>Instructor Rating: ${data.rating}/5</p>
 						<p>Additional Info: <a href="https://www.mcgill.ca/study/2023-2024/courses/${data.subject}-${data.course}" target="_blank">Course Information</a></p>
 						<!-- Add more fields as necessary -->
 						</div>
 					`;
 
-					// Set the content of the InfoWindow on marker click
-					marker.addListener("click", () => {
-						infoWindow.setContent(infoContent);
-						// 	infoWindow.setContent(`${lat}, ${lng}`);
-						infoWindow.open(map, marker);
-					});
+          // Set the content of the InfoWindow on marker click
+          marker.addListener("click", () => {
+            infoWindow.setContent(infoContent);
+            // 	infoWindow.setContent(`${lat}, ${lng}`);
+            infoWindow.open(map, marker);
+          });
 
-					return marker;
-				});
+          return marker;
+        });
 
-				// Update global markers array with new markers
-				markers = newMarkers;
+        // Update global markers array with new markers
+        markers = newMarkers;
 
-				// Add a marker clusterer to manage the markers.
-				markerCluster = new MarkerClusterer({ markers, map });
-				// new MarkerClusterer({ newMarkers, map });
+        // Add a marker clusterer to manage the markers.
+        markerCluster = new MarkerClusterer({ markers, map });
+        // new MarkerClusterer({ newMarkers, map });
 
-				// HEATMAP
-				const heatmapData_main = createHeatmapPoints(courseData);
-				console.log("heatmapData:", heatmapData_main);
-				heatmap_main = new google.maps.visualization.HeatmapLayer({
-					data: heatmapData_main,
-					map: map,
-				});
-				heatmap_main.set("opacity", 0.7);
-				heatmap_main.set("radius", 60);
+        // HEATMAP
+        const heatmapData_main = createHeatmapPoints(courseData);
+        console.log("heatmapData:", heatmapData_main);
+        heatmap_main = new google.maps.visualization.HeatmapLayer({
+          data: heatmapData_main,
+          map: map,
+        });
+        heatmap_main.set("opacity", 0.7);
+        heatmap_main.set("radius", 60);
 
-				const heatmapData_surround =
-					createHeatmapPoints_surround(courseData);
-				heatmap_surround = new google.maps.visualization.HeatmapLayer({
-					data: heatmapData_surround,
-					map: map,
-				});
-				heatmap_surround.set("opacity", 0.3);
-				heatmap_surround.set("radius", 70);
-			} else {
-				console.error("Failed to get courseData:", response.statusText);
-			}
-		} catch (error) {
-			console.error("Error:", error);
-		}
-	}
+        const heatmapData_surround = createHeatmapPoints_surround(courseData);
+        heatmap_surround = new google.maps.visualization.HeatmapLayer({
+          data: heatmapData_surround,
+          map: map,
+        });
+        heatmap_surround.set("opacity", 0.3);
+        heatmap_surround.set("radius", 70);
+      } else {
+        console.error("Failed to get courseData:", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  }
 </script>
 
 <div class="container">
-	<div class="date-selector">
-		<select class="select" bind:value={selectedDay}>
-			<option value="Monday">Monday</option>
-			<option value="Tuesday">Tuesday</option>
-			<option value="Wednesday">Wednesday</option>
-			<option value="Thursday">Thursday</option>
-			<option value="Friday">Friday</option>
-			<option value="Saturday">Saturday</option>
-			<option value="Sunday">Sunday</option>
-		</select>
-	</div>
+  <div class="date-selector">
+    <select class="select" bind:value={selectedDay}>
+      <option value="Monday">Monday</option>
+      <option value="Tuesday">Tuesday</option>
+      <option value="Wednesday">Wednesday</option>
+      <option value="Thursday">Thursday</option>
+      <option value="Friday">Friday</option>
+      <option value="Saturday">Saturday</option>
+      <option value="Sunday">Sunday</option>
+    </select>
+  </div>
 
-	<button class="button" on:click={handleUpdate}>Update</button>
-	<div class="time-slider">
-		<input
-			type="range"
-			min="0"
-			max="1440"
-			step="15"
-			bind:value={timeValue}
-			on:change={updateTime}
-		/>
-		<p class="time-slider-text">Selected Time: {formatTime(timeValue)}</p>
-	</div>
-	<div class="search-container">
-		<input
-			type="text"
-			placeholder="Search location..."
-			bind:value={searchQuery}
-			on:input={handleSearch}
-		/>
-	</div>
+  <button class="button" on:click={handleUpdate}>Update</button>
+  <div class="time-slider">
+    <input
+      type="range"
+      min="0"
+      max="1440"
+      step="15"
+      bind:value={timeValue}
+      on:change={updateTime}
+    />
+    <p class="time-slider-text">Selected Time: {formatTime(timeValue)}</p>
+  </div>
+  <div class="search-container">
+    <input
+      type="text"
+      placeholder="Search location..."
+      bind:value={searchQuery}
+      on:input={handleSearch}
+    />
+  </div>
 </div>
 <div class="date-selector">
-	<select bind:value={selectedDay}>
-		<option value="Monday">Monday</option>
-		<option value="Tuesday">Tuesday</option>
-		<option value="Wednesday">Wednesday</option>
-		<option value="Thursday">Thursday</option>
-		<option value="Friday">Friday</option>
-		<option value="Saturday">Saturday</option>
-		<option value="Sunday">Sunday</option>
-	</select>
+  <select bind:value={selectedDay}>
+    <option value="Monday">Monday</option>
+    <option value="Tuesday">Tuesday</option>
+    <option value="Wednesday">Wednesday</option>
+    <option value="Thursday">Thursday</option>
+    <option value="Friday">Friday</option>
+    <option value="Saturday">Saturday</option>
+    <option value="Sunday">Sunday</option>
+  </select>
 </div>
 
 <div class="search-container">
-	<input
-		type="text"
-		placeholder="Search location..."
-		bind:value={searchQuery}
-		on:input={handleSearch}
-	/>
+  <input
+    type="text"
+    placeholder="Search location..."
+    bind:value={searchQuery}
+    on:input={handleSearch}
+  />
 </div>
 <div class="full-screen" bind:this={container}></div>
 
@@ -526,4 +526,5 @@
 		font-family: Arial, Helvetica, sans-serif;
 		color: blue;
 	}
+
 </style>

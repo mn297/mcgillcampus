@@ -5,6 +5,8 @@ from datetime import datetime
 import geo_locate
 import os
 from dotenv import load_dotenv
+import ratemyprofessor
+import json
 
 load_dotenv()
 
@@ -335,7 +337,9 @@ day_formats = {
     "Friday": "F",
     # Add more mappings as needed
 }
-
+def parse_name(name):
+    parsed_name = name.split()
+    return parsed_name
 
 def get_courses_at_given_time_with_location(connection, given_day, given_time):
     try:
@@ -356,8 +360,17 @@ def get_courses_at_given_time_with_location(connection, given_day, given_time):
 
         # Fetch column names from cursor.description
         columns = [col[0] for col in cursor.description]
-
+        prof_ratings = json.load(open("profratings.json"))
         courses = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        for course in courses:
+            parsed_key = parse_name(course["instructor"])
+            for prof in prof_ratings:
+                #print(str(parsed_key) + "?" + prof + "\n")
+                parsed_prof = parse_name(prof)
+                if parsed_key[0] == (parsed_prof[0] and parsed_key[-1] == parsed_prof[-1]) or (parsed_key[-1] == parsed_prof[0] and parsed_key[0] == parsed_prof[-1]) or (parsed_key[0] == parsed_prof[0] and parsed_key[1] == parsed_prof[1]) or (parsed_key[0] == parsed_prof[1] and parsed_key[1] == parsed_prof[0]):
+                    #print("Match!\n")
+                    course["rating"] = prof_ratings[prof]
+        #print(courses)
         return courses  # Returns a list of courses with location data as dictionaries
 
     except Error as e:
@@ -437,6 +450,32 @@ def import_csv_data(connection, csv_file_path):
             }
             insert_course_data(connection, section_data, row_number)
             insert_section_data(connection, section_data, row_number)
+def scrape_profs(connection):
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT DISTINCT instructor FROM sections")
+        unique_profs = cursor.fetchall()
+        school = ratemyprofessor.get_school_by_name("McGill University")
+        profs = {}
+        counter = 0
+        for prof_tuple in unique_profs:
+            for prof in prof_tuple:
+                if prof is not None:
+                    professor = ratemyprofessor.get_professor_by_school_and_name(school, prof)
+                    if professor is not None:
+                        print(str(counter) + ":\n")
+                        print("Name: " + professor.name + "\n")
+                        print("Rating: " + str(professor.rating) + "\n")
+                        profs.update({professor.name: professor.rating})
+                        counter += 1
+        with open ("profratings.json", "w") as outfile:
+            json.dump(profs, outfile)
+
+        
+        return courses  # Returns a list of courses with location data as dictionaries
+    except Error as e:
+        print(f"Error: {e}")
+        return []
 
 
 def main():
