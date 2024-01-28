@@ -368,7 +368,7 @@ def get_courses_at_given_time_with_location(connection, given_day, given_time):
                 #print(str(parsed_key) + "?" + prof + "\n")
                 parsed_prof = parse_name(prof)
                 if parsed_key[0] == (parsed_prof[0] and parsed_key[-1] == parsed_prof[-1]) or (parsed_key[-1] == parsed_prof[0] and parsed_key[0] == parsed_prof[-1]) or (parsed_key[0] == parsed_prof[0] and parsed_key[1] == parsed_prof[1]) or (parsed_key[0] == parsed_prof[1] and parsed_key[1] == parsed_prof[0]):
-                    print("Match!\n")
+                    #print("Match!\n")
                     course["rating"] = prof_ratings[prof]
         #print(courses)
         return courses  # Returns a list of courses with location data as dictionaries
