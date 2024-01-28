@@ -1,0 +1,17 @@
+{
+    "MATH": "mathematics.svg",
+    "PHYS": "physics.svg",
+    "COMP": "computer_science.svg",
+    "CHEM": "chemistry.svg",
+    "BIOL": "biology.svg",
+    "ECON": "economics.svg",
+    "GEOG": "geography.svg",
+    "ENGL": "english.svg",
+    "HIST": "history.svg",
+    "SOCI": "art.svg",
+    "PSYC": "psychology.svg",
+    "PHIL": "philosophy.svg",
+    "LANG": "language.svg",
+    "ARTS": "art.svg",
+    "MUSC": "music.svg"
+}
