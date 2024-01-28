@@ -8,6 +8,7 @@
 	} from "./utils.svelte";
 	import debounce from "lodash.debounce";
 	import courseIcons from "./courseIcons.json";
+	import course_names from "./course_names.json";
 
 	let container: HTMLElement | null;
 
@@ -15,7 +16,7 @@
 	let zoom = 16;
 	let center: google.maps.LatLngLiteral = { lat: 45.5053, lng: -73.5775 };
 	let markerPosition: google.maps.LatLngLiteral | undefined;
-	let markers = []; // Global array to hold markers
+	let markers = Array<google.maps.Marker>();
 	let markerCluster: MarkerClusterer | undefined;
 	let heatmap_main: google.maps.visualization.HeatmapLayer | undefined;
 	let heatmap_surround: google.maps.visualization.HeatmapLayer | undefined;
@@ -24,6 +25,9 @@
 	let timeValue = 515; // Slider value
 	let selectedDay = "Monday"; // Default value
 	let courseData = [];
+	let svgContent;
+	import subjectColors from "./course_colors.json";
+	const defaultColor = "#607D8B"; // Default color, e.g., Blue Grey
 
 	// Function to create and add markers
 	async function addMarkers() {
@@ -40,18 +44,58 @@
 	}
 
 	// TODO refactor to use createMarker
-	function createMarker(course, svgContent) {
+	// function createMarker(course, svgContent) {
+	async function createMarker(data) {
+		const { AdvancedMarkerElement } = (await google.maps.importLibrary(
+			"marker",
+		)) as google.maps.MarkerLibrary;
+
+		// Extract label from course data
+		const label = `${data.subject.substring(0, 4)}${data.course.substring(
+			0,
+			4,
+		)}`;
+
+		// Create pin glyph
+		const subjectColor = subjectColors[data.subject] || defaultColor;
+
+		const pinGlyph = new google.maps.marker.PinElement({
+			glyph: label,
+			glyphColor: "black",
+			background: subjectColor,
+			borderColor: subjectColor,
+		});
+
+		// Parse latitude and longitude as numbers
+		const lat = parseFloat(data.latitude);
+		const lng = parseFloat(data.longitude);
+		const position = { lat, lng };
+
+		// Create and return the marker
+		const marker = new AdvancedMarkerElement({
+			position,
+			map: map,
+			content: pinGlyph.element,
+		});
+
+		return marker;
+	}
+
+	// TODO doesnt work
+	async function createMarkerSVG(data) {
+		// SVG MARKER
+		const response = await fetch("./science.svg");
+		svgContent = await response.text();
 		const parser = new DOMParser();
 		const pinSvg = parser.parseFromString(
 			svgContent,
 			"image/svg+xml",
 		).documentElement;
-
-		const marker = new google.maps.Marker({
+		const marker_svg = new google.maps.Marker({
 			map,
 			position: {
-				lat: parseFloat(course.latitude),
-				lng: parseFloat(course.longitude),
+				lat: parseFloat(data.latitude),
+				lng: parseFloat(data.longitude),
 			},
 			icon: {
 				url:
@@ -59,10 +103,10 @@
 					encodeURIComponent(svgContent),
 				scaledSize: new google.maps.Size(30, 30), // Adjust size as needed
 			},
-			title: course.subject,
+			title: data.subject,
 		});
-
-		markersMap.set(course.id, marker); // Store the marker for later reference
+		// markersMap.set(course.id, marker); // Store the marker for later reference
+		return marker_svg;
 	}
 
 	class CustomMarker extends google.maps.OverlayView {
@@ -243,10 +287,11 @@
 				console.error("Error:", error);
 			}
 
-			const marker = new AdvancedMarkerElement({
-				position: markerPosition,
-				map: map,
-			});
+			// TEST MARKER
+			// const marker = new AdvancedMarkerElement({
+			// 	position: markerPosition,
+			// 	map: map,
+			// });
 		}
 		handleUpdate();
 	});
@@ -269,10 +314,15 @@
 	}, 200); // Adjust the delay (in milliseconds) as needed
 
 	// Sets the map on all markers in the array.
-	function setMapOnAll(map) {
-		for (let i = 0; i < markers.length; i++) {
-			markers[i].setMap(map);
+	async function setMapOnAll(map) {
+		const resolvedMarkers = await Promise.all(markers);
+
+		for (const marker of resolvedMarkers) {
+			marker.setMap(map);
 		}
+		// for (let i = 0; i < markers.length; i++) {
+		// 	markers[i].setMap(map);
+		// }
 	}
 
 	// Removes the markers from the map, but keeps them in the array.
@@ -362,16 +412,23 @@
 					disableAutoPan: true,
 				});
 
-				courseData.map((data, i) => {
+				const newMarkers = courseData.map((data, i) => {
 					// PIN GLYPH----------------------------------------------
 					const label = `${data.subject.substring(
 						0,
 						4,
 					)}${data.course.substring(0, 4)}`;
+
+					const subjectColor =
+						subjectColors[data.subject] || defaultColor;
+
 					const pinGlyph = new google.maps.marker.PinElement({
 						glyph: label,
 						glyphColor: "black",
+						background: subjectColor,
+						borderColor: "black",
 					});
+
 					// Ensure latitude and longitude are parsed as numbers
 					const lat = parseFloat(data.latitude);
 					const lng = parseFloat(data.longitude);
@@ -418,17 +475,19 @@
 					// }
 					// INFO WINDOW----------------------------------------------
 					// Format the content to display in the InfoWindow
+					const course_name = course_names[data.subject];
 					const infoContent = `
-
 						<div>
-						<h3>${data.subject} ${data.course}</h3>
-						<p>Location: ${data.location_name}</p>
-                        <p>Time: ${data.time}</p>
-                        <p>Instructor: ${data.instructor}</p>
-                        <p>Capacity: ${data.capacity}</p>
-                        <p>CRN: ${data.crn}</p>
-                        <p>Instructor Rating: ${data.rating}/5</p>
-						<p>Additional Info: <a href="https://www.mcgill.ca/study/2023-2024/courses/${data.subject}-${data.course}" target="_blank">Course Information</a></p>
+							<b>
+						<h3>${data.subject} ${data.course} - ${course_name}</h3>
+						<p><u>Location</u>: ${data.location_name}</p>
+                        <p><u>Time</u>: ${data.time}</p>
+                        <p><u>Instructor</u>: ${data.instructor}</p>
+                        <p><u>Capacity</u>: ${data.capacity}</p>
+                        <p><u>CRN</u>: ${data.crn}</p>
+                        <p><u>Instructor Rating</u>: ${data.rating}/5</p>
+						<p><u>Additional Info</u>: <a href="https://www.mcgill.ca/study/2023-2024/courses/${data.subject}-${data.course}" target="_blank">Course Information</a></p>
+						</b>
 						<!-- Add more fields as necessary -->
 						</div>
 					`;
@@ -442,7 +501,38 @@
 
 					return marker;
 				});
+				// Clear previous markers array
+				markers = [];
 
+				// for (const data of courseData) {
+				// 	if (
+				// 		`${data.subject} ${data.course} ${data.location_name}`
+				// 			.toLowerCase()
+				// 			.includes(searchQuery.toLowerCase())
+				// 	) {
+				// 		const marker = await createMarker(data, map);
+				// 		const infoContent = `
+				// 			<div>
+				// 			<h3>${data.subject} ${data.course}</h3>
+				// 			<p>Location: ${data.location_name}</p>
+				// 			<p>Time: ${data.time}</p>
+				// 			<p>Instructor: ${data.instructor}</p>
+				// 			<p>Capacity: ${data.capacity}</p>
+				// 			<p>CRN: ${data.crn}</p>
+				// 			<p>Instructor Rating: ${data.rating}/5</p>
+				// 			<p>Additional Info: <a href="https://www.mcgill.ca/study/2023-2024/courses/${data.subject}-${data.course}" target="_blank">Course Information</a></p>
+				// 			<!-- Add more fields as necessary -->
+				// 			</div>
+				// 			`;
+				// 		// Add click listener to the marker
+				// 		marker.addListener("click", () => {
+				// 			infoWindow.setContent(infoContent);
+				// 			infoWindow.open(map, marker);
+				// 		});
+
+				// 		markers.push(marker);
+				// 	}
+				// }
 				// Update global markers array with new markers
 				markers = newMarkers;
 
@@ -475,6 +565,27 @@
 			console.error("Error:", error);
 		}
 	}
+	function setCurrentTime() {
+		const now = new Date();
+		const hour = now.getHours();
+		const minutes = now.getMinutes();
+		timeValue = hour * 60 + minutes;
+
+		const daysOfWeek = [
+			"Sunday",
+			"Monday",
+			"Tuesday",
+			"Wednesday",
+			"Thursday",
+			"Friday",
+			"Saturday",
+		];
+		const currentDate = new Date();
+		const currentDayIndex = currentDate.getDay(); // 0 for Sunday, 1 for Monday, etc.
+
+		// Set selectedDay to the current day
+		selectedDay = daysOfWeek[currentDayIndex];
+	}
 </script>
 
 <div class="container">
@@ -488,6 +599,12 @@
 						bind:checked={course.isSelected}
 						on:change={() => handleCheckboxChange(course)}
 					/>
+					<div
+						class="color-square"
+						style="background-color: {subjectColors[
+							course.subject
+						] || '#607D8B'}"
+					></div>
 					<span on:click={() => showCourseInfo(course)}>
 						<strong>{course.subject} {course.course}</strong> - {course.location_name}
 						- CAP: {course.capacity}
@@ -497,7 +614,7 @@
 		</ul>
 	</div>
 
-	<!-- Map Container and Controls -->
+	<!-- Map Controls -->
 	<div class="map-container">
 		<!-- Search Container -->
 		<div class="search-container">
@@ -513,7 +630,11 @@
 		<div class="date-selector">
 			<select class="select" bind:value={selectedDay}>
 				<option value="Monday">Monday</option>
-				<!-- ... other days ... -->
+				<option value="Tuesday">Tuesday</option>
+				<option value="Wednesday">Wednesday</option>
+				<option value="Thursday">Thursday</option>
+				<option value="Friday">Friday</option>
+				<option value="Saturday">Saturday</option>
 				<option value="Sunday">Sunday</option>
 			</select>
 		</div>
@@ -534,7 +655,11 @@
 		</div>
 
 		<!-- Update Button -->
-		<button class="button" on:click={handleUpdate}>Update</button>
+		<button class="button" on:click={handleUpdate}><h1>REFRESH</h1></button>
+		<!-- Set Current Time Button -->
+		<button class="button" on:click={setCurrentTime}
+			>Set Current Time</button
+		>
 
 		<!-- Map Display -->
 		<div class="full-screen" bind:this={container}></div>
@@ -542,12 +667,20 @@
 </div>
 
 <style>
+	.color-square {
+		width: 15px;
+		height: 15px;
+		display: inline-block;
+		margin-right: 5px;
+		border: 1px solid #ddd; /* Optional: for better visibility */
+	}
+
 	.container {
 		display: flex;
 	}
 
 	.side-panel {
-		width: 350px; /* Adjust width as needed */
+		width: 400px; /* Adjust width as needed */
 		overflow-y: auto; /* Scroll if content is too long */
 		background-color: #f8f8f8; /* Background color for the side panel */
 		padding: 10px;
