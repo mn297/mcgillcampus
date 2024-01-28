@@ -1,265 +1,345 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { MarkerClusterer } from "@googlemaps/markerclusterer";
-  import {
-    gaussianRandom,
-    createHeatmapPoints,
-    createHeatmapPoints_surround,
-  } from "./utils.svelte";
+	import { onMount } from "svelte";
+	import { MarkerClusterer } from "@googlemaps/markerclusterer";
+	import {
+		gaussianRandom,
+		createHeatmapPoints,
+		createHeatmapPoints_surround,
+	} from "./utils.svelte";
 
-  let container: HTMLElement | null;
+	let container: HTMLElement | null;
 
-  let map: google.maps.Map | undefined;
-  let zoom = 16;
-  let center: google.maps.LatLngLiteral = { lat: 45.5053, lng: -73.5775 };
-  let markerPosition: google.maps.LatLngLiteral | undefined;
-  let markers = []; // Global array to hold markers
-  let markerCluster: MarkerClusterer | undefined;
-  let heatmap_main: google.maps.visualization.HeatmapLayer | undefined;
-  let heatmap_surround: google.maps.visualization.HeatmapLayer | undefined;
+	let map: google.maps.Map | undefined;
+	let zoom = 16;
+	let center: google.maps.LatLngLiteral = { lat: 45.5053, lng: -73.5775 };
+	let markerPosition: google.maps.LatLngLiteral | undefined;
+	let markers = []; // Global array to hold markers
+	let markerCluster: MarkerClusterer | undefined;
+	let heatmap_main: google.maps.visualization.HeatmapLayer | undefined;
+	let heatmap_surround: google.maps.visualization.HeatmapLayer | undefined;
 
-  let searchQuery = "";
-  let timeValue = 515; // Slider value
-  let selectedDay = "Monday"; // Default value
+	let searchQuery = "";
+	let timeValue = 515; // Slider value
+	let selectedDay = "Monday"; // Default value
 
-  class CustomMarker extends google.maps.OverlayView {
-    constructor(latlng, map, label) {
-      super();
-      this.latlng = latlng;
-      this.label = label;
-      this.setMap(map);
-    }
+	class CustomMarker extends google.maps.OverlayView {
+		private image: string;
+		private div?: HTMLElement;
+		private label: string;
+		private map: google.maps.Map | undefined;
+		private position: google.maps.LatLng | undefined;
 
-    draw() {
-      var div = this.div;
-      if (!div) {
-        div = this.div = document.createElement("div");
-        div.style.position = "absolute";
-        div.style.cursor = "pointer";
-        div.style.fontSize = "16px"; // Set your desired font size here
-        div.style.color = "black"; // Set font color
-        div.innerText = this.label;
+		constructor(position, label, map) {
+			super();
+			this.position = position;
+			this.label = label;
+			this.map = map;
+		}
 
-        google.maps.event.addDomListener(div, "click", (event) => {
-          google.maps.event.trigger(this, "click");
-        });
+		/**
+		 * onAdd is called when the map's panes are ready and the overlay has been
+		 * added to the map.
+		 */
+		onAdd() {
+			this.div = document.createElement("div");
+			this.div.style.borderStyle = "none";
+			this.div.style.borderWidth = "0px";
+			this.div.style.position = "absolute";
+			this.div.style.cursor = "pointer";
+			this.div.style.fontSize = "16px"; // Set your desired font size
+			this.div.style.color = "black"; // Set font color
+			this.div.innerText = this.label; // Set the label text
 
-        var panes = this.getPanes();
-        panes.overlayMouseTarget.appendChild(div);
-      }
+			// Add the element to the "overlayLayer" pane.
+			const panes = this.getPanes()!;
 
-      var point = this.getProjection().fromLatLngToDivPixel(this.latlng);
-      if (point) {
-        div.style.left = point.x + "px";
-        div.style.top = point.y + "px";
-      }
-    }
+			panes.overlayLayer.appendChild(this.div);
+		}
 
-    remove() {
-      if (this.div) {
-        this.div.parentNode.removeChild(this.div);
-        this.div = null;
-      }
-    }
+		draw() {
+			const overlayProjection = this.getProjection();
 
-    getPosition() {
-      return this.latlng;
-    }
-  }
+			// Check if the projection is available
+			if (!overlayProjection) {
+				// If not, defer the drawing
+				requestAnimationFrame(() => this.draw());
+				return;
+			}
 
-  // Function to convert slider value to time string
-  // function formatTime(minutes: number) {
-  // 	let hour = Math.floor(minutes / 60);
-  // 	let newMinutes = minutes - hour * 60;
-  // 	let afternoon = hour >= 12;
-  // 	if (hour == 0) hour = 12;
-  // 	return (
-  // 		(hour > 12 ? hour - 12 : hour) +
-  // 		":" +
-  // 		newMinutes +
-  // 		(newMinutes < 10 ? "0" : "") +
-  // 		(afternoon == true ? " PM" : " AM")
-  // 	);
-  // }
-  function formatTime(minutes: number) {
-    let hour = Math.floor(minutes / 60);
-    let newMinutes = minutes % 60; // Simpler way to get remaining minutes
+			// Proceed with drawing if the projection is available
+			const point = overlayProjection.fromLatLngToDivPixel(this.latlng);
 
-    // Formatting for single-digit minutes
-    let formattedMinutes =
-      newMinutes < 10 ? "0" + newMinutes : newMinutes.toString();
+			if (point) {
+				this.div.style.left = point.x + "px";
+				this.div.style.top = point.y + "px";
+			}
+		}
 
-    // Return the time in 24-hour format
-    return `${hour}:${formattedMinutes}`;
-  }
+		/**
+		 * The onRemove() method will be called automatically from the API if
+		 * we ever set the overlay's map property to 'null'.
+		 */
+		onRemove() {
+			if (this.div) {
+				(this.div.parentNode as HTMLElement).removeChild(this.div);
+				delete this.div;
+			}
+		}
 
-  // Hardcoded values for day and time
-  // const day = "Monday";
-  // const time = "10:30 AM";
-  onMount(async () => {
-    if (container) {
-      map = new google.maps.Map(container, {
-        zoom,
-        center,
-        mapId: "a25abe7f61616f26",
-      });
-      const { AdvancedMarkerElement } = (await google.maps.importLibrary(
-        "marker"
-      )) as google.maps.MarkerLibrary;
+		/**
+		 *  Set the visibility to 'hidden' or 'visible'.
+		 */
+		hide() {
+			if (this.div) {
+				this.div.style.visibility = "hidden";
+			}
+		}
 
-      // test marker position
-      try {
-        const response = await fetch("http://127.0.0.1:8000/get_lat_long");
-        if (response.ok) {
-          markerPosition = await response.json();
-          console.log("Marker Position:", markerPosition);
-        } else {
-          console.error("Failed to get marker position:", response.statusText);
-        }
-      } catch (error) {
-        console.error("Error:", error);
-      }
+		show() {
+			if (this.div) {
+				this.div.style.visibility = "visible";
+			}
+		}
 
-      // Fetch course data
-      try {
-        const response = await fetch(
-          `http://127.0.0.1:8000/get_data?day=${encodeURIComponent(
-            selectedDay
-          )}&time=${encodeURIComponent(formattedTime)}`
-        );
-        if (response.ok) {
-          const courseData = await response.json();
-          console.log("courseData:", courseData);
-          // Process courseData to display on the map
-          // Add some markers to the map.
-        } else {
-          console.error("Failed to get courseData:", response.statusText);
-        }
-      } catch (error) {
-        console.error("Error:", error);
-      }
+		toggle() {
+			if (this.div) {
+				if (this.div.style.visibility === "hidden") {
+					this.show();
+				} else {
+					this.hide();
+				}
+			}
+		}
 
-      const marker = new AdvancedMarkerElement({
-        position: markerPosition,
-        map: map,
-      });
-    }
-    handleUpdate();
-  });
-  function handleSearch() {
-    console.log("Search query:", searchQuery);
-    // Future implementation: Use searchQuery to perform a search
-  }
+		toggleDOM(map: google.maps.Map) {
+			if (this.getMap()) {
+				this.setMap(null);
+			} else {
+				this.setMap(map);
+			}
+		}
+	}
 
-  // Rerender slider value in GUI
-  function updateTime() {
-    const formattedTime = formatTime(timeValue);
-    console.log("Selected Time:", formattedTime);
-    // Call the API with the selected time
-    // Replace this with your API call
-  }
+	// Function to convert slider value to time string
+	// function formatTime(minutes: number) {
+	// 	let hour = Math.floor(minutes / 60);
+	// 	let newMinutes = minutes - hour * 60;
+	// 	let afternoon = hour >= 12;
+	// 	if (hour == 0) hour = 12;
+	// 	return (
+	// 		(hour > 12 ? hour - 12 : hour) +
+	// 		":" +
+	// 		newMinutes +
+	// 		(newMinutes < 10 ? "0" : "") +
+	// 		(afternoon == true ? " PM" : " AM")
+	// 	);
+	// }
+	function formatTime(minutes: number) {
+		let hour = Math.floor(minutes / 60);
+		let newMinutes = minutes % 60; // Simpler way to get remaining minutes
 
-  // Sets the map on all markers in the array.
-  function setMapOnAll(map) {
-    for (let i = 0; i < markers.length; i++) {
-      markers[i].setMap(map);
-    }
-  }
+		// Formatting for single-digit minutes
+		let formattedMinutes =
+			newMinutes < 10 ? "0" + newMinutes : newMinutes.toString();
 
-  // Removes the markers from the map, but keeps them in the array.
-  function hideMarkers() {
-    setMapOnAll(null);
-  }
+		// Return the time in 24-hour format
+		return `${hour}:${formattedMinutes}`;
+	}
 
-  // Shows any markers currently in the array.
-  function showMarkers() {
-    setMapOnAll(map);
-  }
+	// Hardcoded values for day and time
+	// const day = "Monday";
+	// const time = "10:30 AM";
+	onMount(async () => {
+		if (container) {
+			map = new google.maps.Map(container, {
+				zoom,
+				center,
+				mapId: "a25abe7f61616f26",
+			});
+			const { AdvancedMarkerElement } = (await google.maps.importLibrary(
+				"marker",
+			)) as google.maps.MarkerLibrary;
 
-  function cleanUp() {
-    hideMarkers();
-    markers = [];
-    if (markerCluster) {
-      markerCluster.clearMarkers();
-    }
-    heatmap_main?.setMap(null);
-    heatmap_surround?.setMap(null);
-  }
+			// test marker position
+			try {
+				const response = await fetch(
+					"http://127.0.0.1:8000/get_lat_long",
+				);
+				if (response.ok) {
+					markerPosition = await response.json();
+					console.log("Marker Position:", markerPosition);
+				} else {
+					console.error(
+						"Failed to get marker position:",
+						response.statusText,
+					);
+				}
+			} catch (error) {
+				console.error("Error:", error);
+			}
 
-  // Deletes all markers in the array by removing references to them.
-  function deleteMarkers() {
-    hideMarkers();
-    markers = [];
-  }
+			// Fetch course data
+			try {
+				const response = await fetch(
+					`http://127.0.0.1:8000/get_data?day=${encodeURIComponent(
+						selectedDay,
+					)}&time=${encodeURIComponent(formattedTime)}`,
+				);
+				if (response.ok) {
+					const courseData = await response.json();
+					console.log("courseData:", courseData);
+					// Process courseData to display on the map
+					// Add some markers to the map.
+				} else {
+					console.error(
+						"Failed to get courseData:",
+						response.statusText,
+					);
+				}
+			} catch (error) {
+				console.error("Error:", error);
+			}
 
-  // Button event handler
-  async function handleUpdate() {
-    // Clear existing markers
-    cleanUp();
+			const marker = new AdvancedMarkerElement({
+				position: markerPosition,
+				map: map,
+			});
+		}
+		handleUpdate();
+	});
+	function handleSearch() {
+		console.log("Search query:", searchQuery);
+		// Future implementation: Use searchQuery to perform a search
+	}
 
-    const { AdvancedMarkerElement } = (await google.maps.importLibrary(
-      "marker"
-    )) as google.maps.MarkerLibrary;
-    const formattedTime = formatTime(timeValue);
-    console.log("Selected Day:", selectedDay, "Selected Time:", formattedTime);
+	// Rerender slider value in GUI
+	function updateTime() {
+		const formattedTime = formatTime(timeValue);
+		console.log("Selected Time:", formattedTime);
+		// Call the API with the selected time
+		// Replace this with your API call
+	}
 
-    try {
-      const response = await fetch(
-        `http://127.0.0.1:8000/get_data?day=${encodeURIComponent(
-          selectedDay
-        )}&time=${encodeURIComponent(formattedTime)}`
-      );
-      if (response.ok) {
-        const courseData = await response.json();
-        console.log("Updated courseData:", courseData);
-        // Process courseData to display on the map
-        const infoWindow = new google.maps.InfoWindow({
-          content: "",
-          disableAutoPan: true,
-        });
+	// Sets the map on all markers in the array.
+	function setMapOnAll(map) {
+		for (let i = 0; i < markers.length; i++) {
+			markers[i].setMap(map);
+		}
+	}
 
-        const newMarkers = courseData.map((data, i) => {
-          const label = `${data.subject.substring(0, 4)}${data.course.substring(
-            0,
-            4
-          )}`;
-          const pinGlyph = new google.maps.marker.PinElement({
-            glyph: label,
-            glyphColor: "black",
-          });
-          const temp_lat = Number.parseFloat(data.latitude);
-          const temp_lng = Number.parseFloat(data.longitude);
-          if (!isNaN(temp_lat) && !isNaN(temp_lng)) {
-            const position = new google.maps.LatLng(temp_lat, temp_lat);
-            new CustomMarker(position, map, label);
-          }
+	// Removes the markers from the map, but keeps them in the array.
+	function hideMarkers() {
+		setMapOnAll(null);
+	}
 
-          // Ensure latitude and longitude are parsed as numbers
-          const lat = parseFloat(data.latitude);
-          const lng = parseFloat(data.longitude);
+	// Shows any markers currently in the array.
+	function showMarkers() {
+		setMapOnAll(map);
+	}
 
-          // Debugging: Log the values and their types
-          //   console.log(`Latitude: ${lat}, Longitude: ${lng}`);
-          //   console.log(
-          //     `Type of Latitude: ${typeof lat}, Type of Longitude: ${typeof lng}`
-          //   );
+	function cleanUp() {
+		hideMarkers();
+		markers = [];
+		if (markerCluster) {
+			markerCluster.clearMarkers();
+		}
+		heatmap_main?.setMap(null);
+		heatmap_surround?.setMap(null);
+	}
 
-          // Check if lat and lng are valid numbers
-          if (isNaN(lat) || isNaN(lng)) {
-            console.error("Invalid latitude or longitude");
-            return null; // Skip this iteration
-          }
+	// Deletes all markers in the array by removing references to them.
+	function deleteMarkers() {
+		hideMarkers();
+		markers = [];
+	}
 
-          const position = { lat, lng };
+	// Button event handler
+	async function handleUpdate() {
+		// Clear existing markers
+		cleanUp();
 
-          const marker = new AdvancedMarkerElement({
-            position, // Using the transformed position
-            map: map,
-            content: pinGlyph.element,
-          });
+		const { AdvancedMarkerElement } = (await google.maps.importLibrary(
+			"marker",
+		)) as google.maps.MarkerLibrary;
+		const formattedTime = formatTime(timeValue);
+		console.log(
+			"Selected Day:",
+			selectedDay,
+			"Selected Time:",
+			formattedTime,
+		);
 
-          // Format the content to display in the InfoWindow
-          const infoContent = `
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:8000/get_data?day=${encodeURIComponent(
+					selectedDay,
+				)}&time=${encodeURIComponent(formattedTime)}`,
+			);
+			if (response.ok) {
+				const courseData = await response.json();
+				console.log("Updated courseData:", courseData);
+				// Process courseData to display on the map
+				const infoWindow = new google.maps.InfoWindow({
+					content: "",
+					disableAutoPan: true,
+				});
+
+				const newMarkers = courseData.map((data, i) => {
+					// PIN GLYPH----------------------------------------------
+					const label = `${data.subject.substring(
+						0,
+						4,
+					)}${data.course.substring(0, 4)}`;
+					const pinGlyph = new google.maps.marker.PinElement({
+						glyph: label,
+						glyphColor: "black",
+					});
+					// Ensure latitude and longitude are parsed as numbers
+					const lat = parseFloat(data.latitude);
+					const lng = parseFloat(data.longitude);
+					const position = { lat, lng };
+
+					// CUSTOM MARKER (TODO)----------------------------------------------
+					const temp_lat = Number.parseFloat(data.latitude);
+					const temp_lng = Number.parseFloat(data.longitude);
+					if (!isNaN(temp_lat) && !isNaN(temp_lng)) {
+						const position = new google.maps.LatLng(
+							temp_lat,
+							temp_lat,
+						);
+
+						const custom_marker = new CustomMarker(
+							position,
+							map,
+							label,
+						);
+						custom_marker.setMap(map);
+
+						console.log("custom_marker:", custom_marker);
+						custom_marker.draw();
+					}
+
+					// Debugging: Log the values and their types
+					//   console.log(`Latitude: ${lat}, Longitude: ${lng}`);
+					//   console.log(
+					//     `Type of Latitude: ${typeof lat}, Type of Longitude: ${typeof lng}`
+					//   );
+
+					// Check if lat and lng are valid numbers
+					if (isNaN(lat) || isNaN(lng)) {
+						console.error("Invalid latitude or longitude");
+						return null; // Skip this iteration
+					}
+
+					// DEFAULT MARKER----------------------------------------------
+					const marker = new AdvancedMarkerElement({
+						position, // Using the transformed position
+						map: map,
+						content: pinGlyph.element,
+					});
+					// INFO WINDOW----------------------------------------------
+					// Format the content to display in the InfoWindow
+					const infoContent = `
 
 						<div>
 						<h3>${data.subject} ${data.course}</h3>
@@ -374,78 +454,77 @@
 <div class="full-screen" bind:this={container}></div>
 
 <style>
-  .search-container {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
-  }
+	.search-container {
+		position: absolute;
+		top: 10px;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 10;
+	}
 
-  .search-container input[type="text"] {
-    padding: 10px;
-    width: 300px;
-    font-size: 1rem;
-  }
+	.search-container input[type="text"] {
+		padding: 10px;
+		width: 300px;
+		font-size: 1rem;
+	}
 
-  .time-slider {
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
-  }
-  .full-screen {
-    width: 97vw;
-    height: 90vh;
-  }
-  .search-container {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
-  }
+	.time-slider {
+		z-index: 10;
+	}
 
-  .search-container input[type="text"] {
-    padding: 10px;
-    width: 300px;
-    font-size: 1rem;
-  }
-  .button {
-    background-color: #4caf50;
-    /* Green */
-    border: none;
-    color: white;
-    padding: 15px 32px;
-    text-align: center;
-    text-decoration: none;
-    /* display: inline-block; */
-    font-size: 16px;
-    margin: 4px 2px;
-    cursor: pointer;
-    border-radius: 100px;
-  }
-  .select {
-    background-color: blue;
-    /* Green */
-    border: none;
-    color: white;
-    padding: 15px 32px;
-    /* text-align: center; */
-    text-decoration: none;
-    /* display: inline-block; */
-    font-size: 16px;
-    margin: 4px 2px;
-    cursor: pointer;
-    border-radius: 100px;
-  }
-  .container {
-    display: flex;
-    gap: 10px; /* Adjust the gap between elements */
-  }
-  .time-slider-text {
-    font-family: Arial, Helvetica, sans-serif;
-    color: blue;
-  }
+	.full-screen {
+		width: 97vw;
+		height: 90vh;
+	}
+
+	.search-container {
+		position: absolute;
+		top: 10px;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 10;
+	}
+
+	.search-container input[type="text"] {
+		padding: 10px;
+		width: 300px;
+		font-size: 1rem;
+	}
+	.button {
+		background-color: #4caf50;
+		/* Green */
+		border: none;
+		color: white;
+		padding: 15px 32px;
+		text-align: center;
+		text-decoration: none;
+		/* display: inline-block; */
+		font-size: 16px;
+		margin: 4px 2px;
+		cursor: pointer;
+		border-radius: 100px;
+	}
+	.select {
+		background-color: blue;
+		/* Green */
+		border: none;
+		color: white;
+		padding: 15px 32px;
+		/* text-align: center; */
+		text-decoration: none;
+		/* display: inline-block; */
+		font-size: 16px;
+		margin: 4px 2px;
+		cursor: pointer;
+		border-radius: 100px;
+	}
+	.container {
+		display: flex;
+		gap: 10px; /* Adjust the gap between elements */
+	}
+	.time-slider-text {
+		font-family: Arial, Helvetica, sans-serif;
+		color: blue;
+	}
+
 </style>

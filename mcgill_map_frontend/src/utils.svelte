@@ -59,7 +59,7 @@
                     const offsetLat = lat + gaussianRandom() * 0.0002; // Apply Gaussian dispersion
                     const offsetLng = lng + gaussianRandom() * 0.0002;
                     const point = new google.maps.LatLng(offsetLat, offsetLng);
-                    console.log("point_offset:", point.lat(), point.lng());
+                    // console.log("point_offset:", point.lat(), point.lng());
                     heatmapData.push(point);
                 }
             } else {
