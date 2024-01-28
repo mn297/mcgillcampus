@@ -61,8 +61,8 @@
       try {
         const response = await fetch(
           `http://127.0.0.1:8000/get_data?day=${encodeURIComponent(
-            day
-          )}&time=${encodeURIComponent(time)}`
+            selectedDay
+          )}&time=${encodeURIComponent(formattedTime)}`
         );
         if (response.ok) {
           const courseData = await response.json();
