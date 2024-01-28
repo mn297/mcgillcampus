@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import { MarkerClusterer } from "@googlemaps/markerclusterer";
-	import { gaussianRandom, createHeatmapPoints } from "./utils.svelte";
+	import {
+		gaussianRandom,
+		createHeatmapPoints,
+		createHeatmapPoints_surround,
+	} from "./utils.svelte";
 
 	let container: HTMLElement | null;
 
@@ -11,11 +15,57 @@
 	let markerPosition: google.maps.LatLngLiteral | undefined;
 	let markers = []; // Global array to hold markers
 	let markerCluster: MarkerClusterer | undefined;
-	let heatmap: google.maps.visualization.HeatmapLayer | undefined;
+	let heatmap_main: google.maps.visualization.HeatmapLayer | undefined;
+	let heatmap_surround: google.maps.visualization.HeatmapLayer | undefined;
 
 	let searchQuery = "";
 	let timeValue = 515; // Slider value
 	let selectedDay = "Monday"; // Default value
+
+	class CustomMarker extends google.maps.OverlayView {
+		constructor(latlng, map, label) {
+			super();
+			this.latlng = latlng;
+			this.label = label;
+			this.setMap(map);
+		}
+
+		draw() {
+			var div = this.div;
+			if (!div) {
+				div = this.div = document.createElement("div");
+				div.style.position = "absolute";
+				div.style.cursor = "pointer";
+				div.style.fontSize = "16px"; // Set your desired font size here
+				div.style.color = "black"; // Set font color
+				div.innerText = this.label;
+
+				google.maps.event.addDomListener(div, "click", (event) => {
+					google.maps.event.trigger(this, "click");
+				});
+
+				var panes = this.getPanes();
+				panes.overlayMouseTarget.appendChild(div);
+			}
+
+			var point = this.getProjection().fromLatLngToDivPixel(this.latlng);
+			if (point) {
+				div.style.left = point.x + "px";
+				div.style.top = point.y + "px";
+			}
+		}
+
+		remove() {
+			if (this.div) {
+				this.div.parentNode.removeChild(this.div);
+				this.div = null;
+			}
+		}
+
+		getPosition() {
+			return this.latlng;
+		}
+	}
 
 	// Function to convert slider value to time string
 	// function formatTime(minutes: number) {
@@ -140,6 +190,8 @@
 		if (markerCluster) {
 			markerCluster.clearMarkers();
 		}
+		heatmap_main?.setMap(null);
+		heatmap_surround?.setMap(null);
 	}
 
 	// Deletes all markers in the array by removing references to them.
@@ -182,12 +234,21 @@
 				const newMarkers = courseData.map((data, i) => {
 					const label = `${data.subject.substring(
 						0,
-						2,
-					)}${data.course.substring(0, 2)}`;
+						4,
+					)}${data.course.substring(0, 4)}`;
 					const pinGlyph = new google.maps.marker.PinElement({
 						glyph: label,
-						glyphColor: "white",
+						glyphColor: "black",
 					});
+					const temp_lat = Number.parseFloat(data.latitude);
+					const temp_lng = Number.parseFloat(data.longitude);
+					if (!isNaN(temp_lat) && !isNaN(temp_lng)) {
+						const position = new google.maps.LatLng(
+							temp_lat,
+							temp_lat,
+						);
+						new CustomMarker(position, map, label);
+					}
 
 					// Ensure latitude and longitude are parsed as numbers
 					const lat = parseFloat(data.latitude);
@@ -244,13 +305,25 @@
 				// Add a marker clusterer to manage the markers.
 				markerCluster = new MarkerClusterer({ markers, map });
 				// new MarkerClusterer({ newMarkers, map });
-				console.log("courseData:", courseData);
-				const heatmapData = createHeatmapPoints(courseData);
-				console.log("heatmapData:", heatmapData);
-				heatmap = new google.maps.visualization.HeatmapLayer({
-					data: heatmapData,
+
+				// HEATMAP
+				const heatmapData_main = createHeatmapPoints(courseData);
+				console.log("heatmapData:", heatmapData_main);
+				heatmap_main = new google.maps.visualization.HeatmapLayer({
+					data: heatmapData_main,
 					map: map,
 				});
+				heatmap_main.set("opacity", 0.7);
+				heatmap_main.set("radius", 60);
+
+				const heatmapData_surround =
+					createHeatmapPoints_surround(courseData);
+				heatmap_surround = new google.maps.visualization.HeatmapLayer({
+					data: heatmapData_surround,
+					map: map,
+				});
+				heatmap_surround.set("opacity", 0.3);
+				heatmap_surround.set("radius", 70);
 			} else {
 				console.error("Failed to get courseData:", response.statusText);
 			}
