@@ -6,6 +6,8 @@
 		createHeatmapPoints,
 		createHeatmapPoints_surround,
 	} from "./utils.svelte";
+	import debounce from "lodash.debounce";
+	import courseIcons from "./courseIcons.json";
 
 	let container: HTMLElement | null;
 
@@ -21,6 +23,47 @@
 	let searchQuery = "";
 	let timeValue = 515; // Slider value
 	let selectedDay = "Monday"; // Default value
+	let courseData = [];
+
+	// Function to create and add markers
+	async function addMarkers() {
+		for (const course of courseData) {
+			const svgFileName = courseIcons[course.subject];
+			if (svgFileName) {
+				const svgUrl = `./path/to/svg/${svgFileName}`;
+				const svgContent = await fetch(svgUrl).then((res) =>
+					res.text(),
+				);
+				createMarker(course, svgContent);
+			}
+		}
+	}
+
+	// TODO refactor to use createMarker
+	function createMarker(course, svgContent) {
+		const parser = new DOMParser();
+		const pinSvg = parser.parseFromString(
+			svgContent,
+			"image/svg+xml",
+		).documentElement;
+
+		const marker = new google.maps.Marker({
+			map,
+			position: {
+				lat: parseFloat(course.latitude),
+				lng: parseFloat(course.longitude),
+			},
+			icon: {
+				url:
+					"data:image/svg+xml;charset=UTF-8," +
+					encodeURIComponent(svgContent),
+				scaledSize: new google.maps.Size(30, 30), // Adjust size as needed
+			},
+			title: course.subject,
+		});
+
+		markersMap.set(course.id, marker); // Store the marker for later reference
+	}
 
 	class CustomMarker extends google.maps.OverlayView {
 		private image: string;
@@ -213,12 +256,17 @@
 	}
 
 	// Rerender slider value in GUI
-	function updateTime() {
+	// function updateTime() {
+	// 	const formattedTime = formatTime(timeValue);
+	// 	console.log("Selected Time:", formattedTime);
+	// 	// Call the API with the selected time
+	// 	// Replace this with your API call
+	// }
+	const updateTime = debounce(() => {
+		// Your update logic here
 		const formattedTime = formatTime(timeValue);
 		console.log("Selected Time:", formattedTime);
-		// Call the API with the selected time
-		// Replace this with your API call
-	}
+	}, 200); // Adjust the delay (in milliseconds) as needed
 
 	// Sets the map on all markers in the array.
 	function setMapOnAll(map) {
@@ -252,8 +300,22 @@
 		hideMarkers();
 		markers = [];
 	}
+	// Function to update markers based on courseData
+	function updateMarkers() {
+		// TODO remove marker
+	}
+	function handleCheckboxChange(course) {
+		course.isSelected = !course.isSelected;
+		updateMarkers(); // Update markers when a course is selected/unselected
+	}
+	function selectAllCourses() {
+		courseData = courseData.map((course) => ({
+			...course,
+			isSelected: true,
+		}));
+	}
 
-	// Button event handler
+	// Rerender markers
 	async function handleUpdate() {
 		// Clear existing markers
 		cleanUp();
@@ -276,15 +338,31 @@
 				)}&time=${encodeURIComponent(formattedTime)}`,
 			);
 			if (response.ok) {
-				const courseData = await response.json();
+				// Courses array
+				courseData = []; // Reset courseData
+				courseData = await response.json();
 				console.log("Updated courseData:", courseData);
+
+				courseData = courseData.filter((data) =>
+					(
+						data.subject +
+						" " +
+						data.course +
+						" " +
+						data.location_name
+					)
+						.toLowerCase()
+						.includes(searchQuery.toLowerCase()),
+				);
+				selectAllCourses();
+
 				// Process courseData to display on the map
 				const infoWindow = new google.maps.InfoWindow({
 					content: "",
 					disableAutoPan: true,
 				});
 
-				const newMarkers = courseData.map((data, i) => {
+				courseData.map((data, i) => {
 					// PIN GLYPH----------------------------------------------
 					const label = `${data.subject.substring(
 						0,
@@ -299,44 +377,45 @@
 					const lng = parseFloat(data.longitude);
 					const position = { lat, lng };
 
-					// CUSTOM MARKER (TODO)----------------------------------------------
-					const temp_lat = Number.parseFloat(data.latitude);
-					const temp_lng = Number.parseFloat(data.longitude);
-					if (!isNaN(temp_lat) && !isNaN(temp_lng)) {
-						const position = new google.maps.LatLng(
-							temp_lat,
-							temp_lat,
-						);
-
-						const custom_marker = new CustomMarker(
-							position,
-							map,
-							label,
-						);
-						custom_marker.setMap(map);
-
-						console.log("custom_marker:", custom_marker);
-						custom_marker.draw();
-					}
-
-					// Debugging: Log the values and their types
-					//   console.log(`Latitude: ${lat}, Longitude: ${lng}`);
-					//   console.log(
-					//     `Type of Latitude: ${typeof lat}, Type of Longitude: ${typeof lng}`
-					//   );
-
-					// Check if lat and lng are valid numbers
-					if (isNaN(lat) || isNaN(lng)) {
-						console.error("Invalid latitude or longitude");
-						return null; // Skip this iteration
-					}
-
 					// DEFAULT MARKER----------------------------------------------
+					// TODO refector to use createMarker
 					const marker = new AdvancedMarkerElement({
 						position, // Using the transformed position
 						map: map,
 						content: pinGlyph.element,
 					});
+
+					// CUSTOM MARKER (TODO)----------------------------------------------
+					// const temp_lat = Number.parseFloat(data.latitude);
+					// const temp_lng = Number.parseFloat(data.longitude);
+					// if (!isNaN(temp_lat) && !isNaN(temp_lng)) {
+					// 	const position = new google.maps.LatLng(
+					// 		temp_lat,
+					// 		temp_lat,
+					// 	);
+
+					// 	const custom_marker = new CustomMarker(
+					// 		position,
+					// 		map,
+					// 		label,
+					// 	);
+					// 	custom_marker.setMap(map);
+
+					// 	console.log("custom_marker:", custom_marker);
+					// 	custom_marker.draw();
+					// }
+
+					// // Debugging: Log the values and their types
+					// //   console.log(`Latitude: ${lat}, Longitude: ${lng}`);
+					// //   console.log(
+					// //     `Type of Latitude: ${typeof lat}, Type of Longitude: ${typeof lng}`
+					// //   );
+
+					// // Check if lat and lng are valid numbers
+					// if (isNaN(lat) || isNaN(lng)) {
+					// 	console.error("Invalid latitude or longitude");
+					// 	return null; // Skip this iteration
+					// }
 					// INFO WINDOW----------------------------------------------
 					// Format the content to display in the InfoWindow
 					const infoContent = `
@@ -354,177 +433,171 @@
 						</div>
 					`;
 
-          // Set the content of the InfoWindow on marker click
-          marker.addListener("click", () => {
-            infoWindow.setContent(infoContent);
-            // 	infoWindow.setContent(`${lat}, ${lng}`);
-            infoWindow.open(map, marker);
-          });
+					// Set the content of the InfoWindow on marker click
+					marker.addListener("click", () => {
+						infoWindow.setContent(infoContent);
+						// 	infoWindow.setContent(`${lat}, ${lng}`);
+						infoWindow.open(map, marker);
+					});
 
-          return marker;
-        });
+					return marker;
+				});
 
-        // Update global markers array with new markers
-        markers = newMarkers;
+				// Update global markers array with new markers
+				markers = newMarkers;
 
-        // Add a marker clusterer to manage the markers.
-        markerCluster = new MarkerClusterer({ markers, map });
-        // new MarkerClusterer({ newMarkers, map });
+				// Add a marker clusterer to manage the markers.
+				markerCluster = new MarkerClusterer({ markers, map });
+				// new MarkerClusterer({ newMarkers, map });
 
-        // HEATMAP
-        const heatmapData_main = createHeatmapPoints(courseData);
-        console.log("heatmapData:", heatmapData_main);
-        heatmap_main = new google.maps.visualization.HeatmapLayer({
-          data: heatmapData_main,
-          map: map,
-        });
-        heatmap_main.set("opacity", 0.7);
-        heatmap_main.set("radius", 60);
+				// HEATMAP
+				const heatmapData_main = createHeatmapPoints(courseData);
+				console.log("heatmapData:", heatmapData_main);
+				heatmap_main = new google.maps.visualization.HeatmapLayer({
+					data: heatmapData_main,
+					map: map,
+				});
+				heatmap_main.set("opacity", 0.7);
+				heatmap_main.set("radius", 60);
 
-        const heatmapData_surround = createHeatmapPoints_surround(courseData);
-        heatmap_surround = new google.maps.visualization.HeatmapLayer({
-          data: heatmapData_surround,
-          map: map,
-        });
-        heatmap_surround.set("opacity", 0.3);
-        heatmap_surround.set("radius", 70);
-      } else {
-        console.error("Failed to get courseData:", response.statusText);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-    }
-  }
+				const heatmapData_surround =
+					createHeatmapPoints_surround(courseData);
+				heatmap_surround = new google.maps.visualization.HeatmapLayer({
+					data: heatmapData_surround,
+					map: map,
+				});
+				heatmap_surround.set("opacity", 0.3);
+				heatmap_surround.set("radius", 70);
+			} else {
+				console.error("Failed to get courseData:", response.statusText);
+			}
+		} catch (error) {
+			console.error("Error:", error);
+		}
+	}
 </script>
 
 <div class="container">
-  <div class="date-selector">
-    <select class="select" bind:value={selectedDay}>
-      <option value="Monday">Monday</option>
-      <option value="Tuesday">Tuesday</option>
-      <option value="Wednesday">Wednesday</option>
-      <option value="Thursday">Thursday</option>
-      <option value="Friday">Friday</option>
-      <option value="Saturday">Saturday</option>
-      <option value="Sunday">Sunday</option>
-    </select>
-  </div>
+	<!-- Side Panel for Listing Courses -->
+	<div class="side-panel">
+		<ul>
+			{#each courseData as course}
+				<li>
+					<input
+						type="checkbox"
+						bind:checked={course.isSelected}
+						on:change={() => handleCheckboxChange(course)}
+					/>
+					<span on:click={() => showCourseInfo(course)}>
+						<strong>{course.subject} {course.course}</strong> - {course.location_name}
+						- CAP: {course.capacity}
+					</span>
+				</li>
+			{/each}
+		</ul>
+	</div>
 
-  <button class="button" on:click={handleUpdate}>Update</button>
-  <div class="time-slider">
-    <input
-      type="range"
-      min="0"
-      max="1440"
-      step="15"
-      bind:value={timeValue}
-      on:change={updateTime}
-    />
-    <p class="time-slider-text">Selected Time: {formatTime(timeValue)}</p>
-  </div>
-  <div class="search-container">
-    <input
-      type="text"
-      placeholder="Search location..."
-      bind:value={searchQuery}
-      on:input={handleSearch}
-    />
-  </div>
-</div>
-<div class="date-selector">
-  <select bind:value={selectedDay}>
-    <option value="Monday">Monday</option>
-    <option value="Tuesday">Tuesday</option>
-    <option value="Wednesday">Wednesday</option>
-    <option value="Thursday">Thursday</option>
-    <option value="Friday">Friday</option>
-    <option value="Saturday">Saturday</option>
-    <option value="Sunday">Sunday</option>
-  </select>
-</div>
+	<!-- Map Container and Controls -->
+	<div class="map-container">
+		<!-- Search Container -->
+		<div class="search-container">
+			<input
+				type="text"
+				placeholder="Search location..."
+				bind:value={searchQuery}
+			/>
+			<button on:click={handleUpdate}>Search</button>
+		</div>
 
-<div class="search-container">
-  <input
-    type="text"
-    placeholder="Search location..."
-    bind:value={searchQuery}
-    on:input={handleSearch}
-  />
+		<!-- Date Selector -->
+		<div class="date-selector">
+			<select class="select" bind:value={selectedDay}>
+				<option value="Monday">Monday</option>
+				<!-- ... other days ... -->
+				<option value="Sunday">Sunday</option>
+			</select>
+		</div>
+
+		<!-- Time Slider -->
+		<div class="time-slider">
+			<input
+				type="range"
+				min="0"
+				max="1440"
+				step="5"
+				bind:value={timeValue}
+				on:change={updateTime}
+			/>
+			<p class="time-slider-text">
+				Selected Time: {formatTime(timeValue)}
+			</p>
+		</div>
+
+		<!-- Update Button -->
+		<button class="button" on:click={handleUpdate}>Update</button>
+
+		<!-- Map Display -->
+		<div class="full-screen" bind:this={container}></div>
+	</div>
 </div>
-<div class="full-screen" bind:this={container}></div>
 
 <style>
+	.container {
+		display: flex;
+	}
+
+	.side-panel {
+		width: 350px; /* Adjust width as needed */
+		overflow-y: auto; /* Scroll if content is too long */
+		background-color: #f8f8f8; /* Background color for the side panel */
+		padding: 10px;
+		height: 90vh; /* Match the height of the map container */
+	}
+
+	.map-container {
+		flex-grow: 1;
+		position: relative; /* For absolute positioning of its children */
+	}
+
 	.search-container {
-		position: absolute;
+		/* position: absolute; */
 		top: 10px;
-		left: 50%;
-		transform: translateX(-50%);
+		left: 10px; /* Position near the top-left corner of the map */
 		z-index: 10;
 	}
 
-	.search-container input[type="text"] {
+	.search-container input[type="text"],
+	.button,
+	.select {
 		padding: 10px;
-		width: 300px;
+		margin-bottom: 5px; /* Spacing between elements */
 		font-size: 1rem;
+	}
+
+	.button,
+	.select {
+		background-color: #4caf50; /* Green for button, can change for select */
+		border: none;
+		color: white;
+		text-align: center;
+		cursor: pointer;
+		border-radius: 5px; /* Adjust as needed */
 	}
 
 	.time-slider {
 		z-index: 10;
+		/* position: absolute; */
+		/* bottom: 20px; /* Position at the bottom of the map container */
+		/* left: 10px; Align with the search container */
 	}
 
 	.full-screen {
-		width: 97vw;
-		height: 90vh;
+		width: 100%; /* Fill the map container */
+		height: 90vh; /* Adjust as needed */
 	}
 
-	.search-container {
-		position: absolute;
-		top: 10px;
-		left: 50%;
-		transform: translateX(-50%);
-		z-index: 10;
-	}
-
-	.search-container input[type="text"] {
-		padding: 10px;
-		width: 300px;
-		font-size: 1rem;
-	}
-	.button {
-		background-color: #4caf50;
-		/* Green */
-		border: none;
-		color: white;
-		padding: 15px 32px;
-		text-align: center;
-		text-decoration: none;
-		/* display: inline-block; */
-		font-size: 16px;
-		margin: 4px 2px;
-		cursor: pointer;
-		border-radius: 100px;
-	}
-	.select {
-		background-color: blue;
-		/* Green */
-		border: none;
-		color: white;
-		padding: 15px 32px;
-		/* text-align: center; */
-		text-decoration: none;
-		/* display: inline-block; */
-		font-size: 16px;
-		margin: 4px 2px;
-		cursor: pointer;
-		border-radius: 100px;
-	}
-	.container {
-		display: flex;
-		gap: 10px; /* Adjust the gap between elements */
-	}
 	.time-slider-text {
 		font-family: Arial, Helvetica, sans-serif;
 		color: blue;
 	}
-
 </style>
