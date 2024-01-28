@@ -16,18 +16,29 @@
 	let selectedDay = "Monday"; // Default value
 
 	// Function to convert slider value to time string
+	// function formatTime(minutes: number) {
+	// 	let hour = Math.floor(minutes / 60);
+	// 	let newMinutes = minutes - hour * 60;
+	// 	let afternoon = hour >= 12;
+	// 	if (hour == 0) hour = 12;
+	// 	return (
+	// 		(hour > 12 ? hour - 12 : hour) +
+	// 		":" +
+	// 		newMinutes +
+	// 		(newMinutes < 10 ? "0" : "") +
+	// 		(afternoon == true ? " PM" : " AM")
+	// 	);
+	// }
 	function formatTime(minutes: number) {
 		let hour = Math.floor(minutes / 60);
-		let newMinutes = minutes - hour * 60;
-		let afternoon = hour >= 12;
-		if (hour == 0) hour = 12;
-		return (
-			(hour > 12 ? hour - 12 : hour) +
-			":" +
-			newMinutes +
-			(newMinutes < 10 ? "0" : "") +
-			(afternoon == true ? " PM" : " AM")
-		);
+		let newMinutes = minutes % 60; // Simpler way to get remaining minutes
+
+		// Formatting for single-digit minutes
+		let formattedMinutes =
+			newMinutes < 10 ? "0" + newMinutes : newMinutes.toString();
+
+		// Return the time in 24-hour format
+		return `${hour}:${formattedMinutes}`;
 	}
 
 	// Hardcoded values for day and time

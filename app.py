@@ -46,8 +46,8 @@ def get_data():
     test_time = request.args.get("time")
 
     # Hardcode test.
-    test_day = "Monday"
-    test_time = "01:30"
+    # test_day = "Monday"
+    # test_time = "01:30"
 
     if not test_day or not test_time:
         return jsonify({"error": "Day and time parameters are required"}), 400
