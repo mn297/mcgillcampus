@@ -283,7 +283,13 @@
 				console.log("Updated courseData:", courseData);
 
 				courseData = courseData.filter((data) =>
-					(data.subject + " " + data.course)
+					(
+						data.subject +
+						" " +
+						data.course +
+						" " +
+						data.location_name
+					)
 						.toLowerCase()
 						.includes(searchQuery.toLowerCase()),
 				);
@@ -409,153 +415,114 @@
 </script>
 
 <div class="container">
-	<div class="date-selector">
-		<select class="select" bind:value={selectedDay}>
-			<option value="Monday">Monday</option>
-			<option value="Tuesday">Tuesday</option>
-			<option value="Wednesday">Wednesday</option>
-			<option value="Thursday">Thursday</option>
-			<option value="Friday">Friday</option>
-			<option value="Saturday">Saturday</option>
-			<option value="Sunday">Sunday</option>
-		</select>
-	</div>
+    <!-- Side Panel for Listing Courses -->
+    <div class="side-panel">
+        <ul>
+            {#each courseData as course}
+                <li>
+                    <strong>{course.subject} {course.course}</strong> - {course.title}
+                </li>
+            {/each}
+        </ul>
+    </div>
 
-	<button class="button" on:click={handleUpdate}>Update</button>
-	<div class="time-slider">
-		<input
-			type="range"
-			min="0"
-			max="1440"
-			step="15"
-			bind:value={timeValue}
-			on:change={updateTime}
-		/>
-		<p class="time-slider-text">Selected Time: {formatTime(timeValue)}</p>
-	</div>
-</div>
-<div class="date-selector">
-	<select bind:value={selectedDay}>
-		<option value="Monday">Monday</option>
-		<option value="Tuesday">Tuesday</option>
-		<option value="Wednesday">Wednesday</option>
-		<option value="Thursday">Thursday</option>
-		<option value="Friday">Friday</option>
-		<option value="Saturday">Saturday</option>
-		<option value="Sunday">Sunday</option>
-	</select>
-</div>
+    <!-- Map Container and Controls -->
+    <div class="map-container">
+        <!-- Search Container -->
+        <div class="search-container">
+            <input
+                type="text"
+                placeholder="Search location..."
+                bind:value={searchQuery}
+            />
+            <button on:click={handleUpdate}>Search</button>
+        </div>
 
-<div class="search-container">
-	<input
-		type="text"
-		placeholder="Search location..."
-		bind:value={searchQuery}
-	/>
-	<button on:click={handleUpdate}>Search</button>
-</div>
+        <!-- Date Selector -->
+        <div class="date-selector">
+            <select class="select" bind:value={selectedDay}>
+                <option value="Monday">Monday</option>
+                <!-- ... other days ... -->
+                <option value="Sunday">Sunday</option>
+            </select>
+        </div>
 
-<div class="container">
-	<div class="side-panel">
-		<ul>
-			{#each courseData as course}
-				<li>
-					<strong>{course.subject} {course.course}</strong> - {course.title}
-				</li>
-			{/each}
-		</ul>
-	</div>
-	<div class="map-container">
-		<!-- Your map and other content here -->
-	</div>
+        <!-- Time Slider -->
+        <div class="time-slider">
+            <input
+                type="range"
+                min="0"
+                max="1440"
+                step="15"
+                bind:value={timeValue}
+                on:change={updateTime}
+            />
+            <p class="time-slider-text">Selected Time: {formatTime(timeValue)}</p>
+        </div>
+
+        <!-- Update Button -->
+        <button class="button" on:click={handleUpdate}>Update</button>
+
+        <!-- Map Display -->
+        <div class="full-screen" bind:this={container}></div>
+    </div>
 </div>
 
-<div class="full-screen" bind:this={container}></div>
 
 <style>
-	.container {
-		display: flex;
-	}
+    .container {
+        display: flex;
+    }
 
-	.side-panel {
-		width: 250px; /* Adjust width as needed */
-		overflow-y: auto; /* Scroll if content is too long */
-		background-color: #f8f8f8; /* Background color for the side panel */
-		padding: 10px;
-	}
-	.map-container {
-		flex-grow: 1;
-	}
-	.search-container {
-		position: absolute;
-		top: 10px;
-		left: 50%;
-		transform: translateX(-50%);
-		z-index: 10;
-	}
+    .side-panel {
+        width: 250px; /* Adjust width as needed */
+        overflow-y: auto; /* Scroll if content is too long */
+        background-color: #f8f8f8; /* Background color for the side panel */
+        padding: 10px;
+        height: 90vh; /* Match the height of the map container */
+    }
 
-	.search-container input[type="text"] {
-		padding: 10px;
-		width: 300px;
-		font-size: 1rem;
-	}
+    .map-container {
+        flex-grow: 1;
+        position: relative; /* For absolute positioning of its children */
+    }
 
-	.time-slider {
-		z-index: 10;
-	}
+    .search-container {
+        /* position: absolute; */
+        top: 10px;
+        left: 10px; /* Position near the top-left corner of the map */
+        z-index: 10;
+    }
 
-	.full-screen {
-		width: 97vw;
-		height: 90vh;
-	}
+    .search-container input[type="text"], .button, .select {
+        padding: 10px;
+        margin-bottom: 5px; /* Spacing between elements */
+        font-size: 1rem;
+    }
 
-	.search-container {
-		position: absolute;
-		top: 10px;
-		left: 50%;
-		transform: translateX(-50%);
-		z-index: 10;
-	}
+    .button, .select {
+        background-color: #4caf50; /* Green for button, can change for select */
+        border: none;
+        color: white;
+        text-align: center;
+        cursor: pointer;
+        border-radius: 5px; /* Adjust as needed */
+    }
 
-	.search-container input[type="text"] {
-		padding: 10px;
-		width: 300px;
-		font-size: 1rem;
-	}
-	.button {
-		background-color: #4caf50;
-		/* Green */
-		border: none;
-		color: white;
-		padding: 15px 32px;
-		text-align: center;
-		text-decoration: none;
-		/* display: inline-block; */
-		font-size: 16px;
-		margin: 4px 2px;
-		cursor: pointer;
-		border-radius: 100px;
-	}
-	.select {
-		background-color: blue;
-		/* Green */
-		border: none;
-		color: white;
-		padding: 15px 32px;
-		/* text-align: center; */
-		text-decoration: none;
-		/* display: inline-block; */
-		font-size: 16px;
-		margin: 4px 2px;
-		cursor: pointer;
-		border-radius: 100px;
-	}
-	.container {
-		display: flex;
-		gap: 10px; /* Adjust the gap between elements */
-	}
-	.time-slider-text {
-		font-family: Arial, Helvetica, sans-serif;
-		color: blue;
-	}
+    .time-slider {
+        z-index: 10;
+        /* position: absolute; */
+        /* bottom: 20px; /* Position at the bottom of the map container */
+        /* left: 10px; Align with the search container */ 
+    }
+
+    .full-screen {
+        width: 100%; /* Fill the map container */
+        height: 90vh; /* Adjust as needed */
+    }
+
+    .time-slider-text {
+        font-family: Arial, Helvetica, sans-serif;
+        color: blue;
+    }
 </style>
