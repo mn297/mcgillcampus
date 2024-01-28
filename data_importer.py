@@ -122,6 +122,11 @@ def create_table_if_not_exists(connection):
         time_start TIME,
         time_end TIME,
         location_id INT,
+        capacity VARCHAR(255),
+        wl_capacity VARCHAR(255),
+        wl_actual VARCHAR(255),
+        wl_remaining VARCHAR(255),
+        date VARCHAR(255),
         PRIMARY KEY (crn, section),
         FOREIGN KEY (crn) REFERENCES campus_w24.courses(crn),
         FOREIGN KEY (location_id) REFERENCES campus_w24.locations(location_id)
@@ -286,18 +291,28 @@ def insert_section_data(connection, section_data, row_number):
             time_start,  # Start Time
             time_end,  # End Time
             location_id,
+            section_data["capacity"],
+            section_data["wl_capacity"],
+            section_data["wl_actual"],
+            section_data["wl_remaining"],
+            section_data["date"],
         )
 
-        query = """INSERT INTO sections (crn, subject, course, section, type, instructor, days, time, time_start, time_end, location_id) 
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
+        query = """INSERT INTO sections (crn, subject, course, section, type, instructor, days, time, time_start, time_end, location_id, capacity, wl_capacity, wl_actual, wl_remaining, date)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
                    ON DUPLICATE KEY UPDATE 
-                     type=VALUES(type), 
-                     instructor=VALUES(instructor), 
-                     days=VALUES(days), 
-                     time=VALUES(time),
-                     time_start=VALUES(time_start), 
-                     time_end=VALUES(time_end), 
-                     location_id=VALUES(location_id);"""
+                    type=VALUES(type), 
+                    instructor=VALUES(instructor), 
+                    days=VALUES(days), 
+                    time=VALUES(time),
+                    time_start=VALUES(time_start), 
+                    time_end=VALUES(time_end), 
+                    location_id=VALUES(location_id),
+                    capacity=VALUES(capacity),
+                    wl_capacity=VALUES(wl_capacity),
+                    wl_actual=VALUES(wl_actual),
+                    wl_remaining=VALUES(wl_remaining),  
+                    date=VALUES(date);"""
         cursor.execute(query, section_data_tuple)
         connection.commit()
     except Error as e:

@@ -291,20 +291,16 @@
 		transform: translateX(-50%);
 		z-index: 10;
 	}
-
 	.search-container input[type="text"] {
 		padding: 10px;
 		width: 300px;
 		font-size: 1rem;
 	}
-
 	.time-slider {
-		position: absolute;
-		bottom: 10px;
-		left: 50%;
-		transform: translateX(-50%);
-		z-index: 10;
+		padding: 10px;
+		font-size: 1rem;
 	}
+
 	.full-screen {
 		width: 97vw;
 		height: 90vh;
