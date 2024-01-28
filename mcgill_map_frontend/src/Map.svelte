@@ -21,6 +21,7 @@
 	let searchQuery = "";
 	let timeValue = 515; // Slider value
 	let selectedDay = "Monday"; // Default value
+	let courseData = [];
 
 	class CustomMarker extends google.maps.OverlayView {
 		private image: string;
@@ -276,8 +277,17 @@
 				)}&time=${encodeURIComponent(formattedTime)}`,
 			);
 			if (response.ok) {
-				const courseData = await response.json();
+				// Courses array
+				courseData = []; // Reset courseData
+				courseData = await response.json();
 				console.log("Updated courseData:", courseData);
+
+				courseData = courseData.filter((data) =>
+					(data.subject + " " + data.course)
+						.toLowerCase()
+						.includes(searchQuery.toLowerCase()),
+				);
+
 				// Process courseData to display on the map
 				const infoWindow = new google.maps.InfoWindow({
 					content: "",
@@ -300,36 +310,36 @@
 					const position = { lat, lng };
 
 					// CUSTOM MARKER (TODO)----------------------------------------------
-					const temp_lat = Number.parseFloat(data.latitude);
-					const temp_lng = Number.parseFloat(data.longitude);
-					if (!isNaN(temp_lat) && !isNaN(temp_lng)) {
-						const position = new google.maps.LatLng(
-							temp_lat,
-							temp_lat,
-						);
+					// const temp_lat = Number.parseFloat(data.latitude);
+					// const temp_lng = Number.parseFloat(data.longitude);
+					// if (!isNaN(temp_lat) && !isNaN(temp_lng)) {
+					// 	const position = new google.maps.LatLng(
+					// 		temp_lat,
+					// 		temp_lat,
+					// 	);
 
-						const custom_marker = new CustomMarker(
-							position,
-							map,
-							label,
-						);
-						custom_marker.setMap(map);
+					// 	const custom_marker = new CustomMarker(
+					// 		position,
+					// 		map,
+					// 		label,
+					// 	);
+					// 	custom_marker.setMap(map);
 
-						console.log("custom_marker:", custom_marker);
-						custom_marker.draw();
-					}
+					// 	console.log("custom_marker:", custom_marker);
+					// 	custom_marker.draw();
+					// }
 
-					// Debugging: Log the values and their types
-					//   console.log(`Latitude: ${lat}, Longitude: ${lng}`);
-					//   console.log(
-					//     `Type of Latitude: ${typeof lat}, Type of Longitude: ${typeof lng}`
-					//   );
+					// // Debugging: Log the values and their types
+					// //   console.log(`Latitude: ${lat}, Longitude: ${lng}`);
+					// //   console.log(
+					// //     `Type of Latitude: ${typeof lat}, Type of Longitude: ${typeof lng}`
+					// //   );
 
-					// Check if lat and lng are valid numbers
-					if (isNaN(lat) || isNaN(lng)) {
-						console.error("Invalid latitude or longitude");
-						return null; // Skip this iteration
-					}
+					// // Check if lat and lng are valid numbers
+					// if (isNaN(lat) || isNaN(lng)) {
+					// 	console.error("Invalid latitude or longitude");
+					// 	return null; // Skip this iteration
+					// }
 
 					// DEFAULT MARKER----------------------------------------------
 					const marker = new AdvancedMarkerElement({
@@ -354,106 +364,128 @@
 						</div>
 					`;
 
-          // Set the content of the InfoWindow on marker click
-          marker.addListener("click", () => {
-            infoWindow.setContent(infoContent);
-            // 	infoWindow.setContent(`${lat}, ${lng}`);
-            infoWindow.open(map, marker);
-          });
+					// Set the content of the InfoWindow on marker click
+					marker.addListener("click", () => {
+						infoWindow.setContent(infoContent);
+						// 	infoWindow.setContent(`${lat}, ${lng}`);
+						infoWindow.open(map, marker);
+					});
 
-          return marker;
-        });
+					return marker;
+				});
 
-        // Update global markers array with new markers
-        markers = newMarkers;
+				// Update global markers array with new markers
+				markers = newMarkers;
 
-        // Add a marker clusterer to manage the markers.
-        markerCluster = new MarkerClusterer({ markers, map });
-        // new MarkerClusterer({ newMarkers, map });
+				// Add a marker clusterer to manage the markers.
+				markerCluster = new MarkerClusterer({ markers, map });
+				// new MarkerClusterer({ newMarkers, map });
 
-        // HEATMAP
-        const heatmapData_main = createHeatmapPoints(courseData);
-        console.log("heatmapData:", heatmapData_main);
-        heatmap_main = new google.maps.visualization.HeatmapLayer({
-          data: heatmapData_main,
-          map: map,
-        });
-        heatmap_main.set("opacity", 0.7);
-        heatmap_main.set("radius", 60);
+				// HEATMAP
+				const heatmapData_main = createHeatmapPoints(courseData);
+				console.log("heatmapData:", heatmapData_main);
+				heatmap_main = new google.maps.visualization.HeatmapLayer({
+					data: heatmapData_main,
+					map: map,
+				});
+				heatmap_main.set("opacity", 0.7);
+				heatmap_main.set("radius", 60);
 
-        const heatmapData_surround = createHeatmapPoints_surround(courseData);
-        heatmap_surround = new google.maps.visualization.HeatmapLayer({
-          data: heatmapData_surround,
-          map: map,
-        });
-        heatmap_surround.set("opacity", 0.3);
-        heatmap_surround.set("radius", 70);
-      } else {
-        console.error("Failed to get courseData:", response.statusText);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-    }
-  }
+				const heatmapData_surround =
+					createHeatmapPoints_surround(courseData);
+				heatmap_surround = new google.maps.visualization.HeatmapLayer({
+					data: heatmapData_surround,
+					map: map,
+				});
+				heatmap_surround.set("opacity", 0.3);
+				heatmap_surround.set("radius", 70);
+			} else {
+				console.error("Failed to get courseData:", response.statusText);
+			}
+		} catch (error) {
+			console.error("Error:", error);
+		}
+	}
 </script>
 
 <div class="container">
-  <div class="date-selector">
-    <select class="select" bind:value={selectedDay}>
-      <option value="Monday">Monday</option>
-      <option value="Tuesday">Tuesday</option>
-      <option value="Wednesday">Wednesday</option>
-      <option value="Thursday">Thursday</option>
-      <option value="Friday">Friday</option>
-      <option value="Saturday">Saturday</option>
-      <option value="Sunday">Sunday</option>
-    </select>
-  </div>
+	<div class="date-selector">
+		<select class="select" bind:value={selectedDay}>
+			<option value="Monday">Monday</option>
+			<option value="Tuesday">Tuesday</option>
+			<option value="Wednesday">Wednesday</option>
+			<option value="Thursday">Thursday</option>
+			<option value="Friday">Friday</option>
+			<option value="Saturday">Saturday</option>
+			<option value="Sunday">Sunday</option>
+		</select>
+	</div>
 
-  <button class="button" on:click={handleUpdate}>Update</button>
-  <div class="time-slider">
-    <input
-      type="range"
-      min="0"
-      max="1440"
-      step="15"
-      bind:value={timeValue}
-      on:change={updateTime}
-    />
-    <p class="time-slider-text">Selected Time: {formatTime(timeValue)}</p>
-  </div>
-  <div class="search-container">
-    <input
-      type="text"
-      placeholder="Search location..."
-      bind:value={searchQuery}
-      on:input={handleSearch}
-    />
-  </div>
+	<button class="button" on:click={handleUpdate}>Update</button>
+	<div class="time-slider">
+		<input
+			type="range"
+			min="0"
+			max="1440"
+			step="15"
+			bind:value={timeValue}
+			on:change={updateTime}
+		/>
+		<p class="time-slider-text">Selected Time: {formatTime(timeValue)}</p>
+	</div>
 </div>
 <div class="date-selector">
-  <select bind:value={selectedDay}>
-    <option value="Monday">Monday</option>
-    <option value="Tuesday">Tuesday</option>
-    <option value="Wednesday">Wednesday</option>
-    <option value="Thursday">Thursday</option>
-    <option value="Friday">Friday</option>
-    <option value="Saturday">Saturday</option>
-    <option value="Sunday">Sunday</option>
-  </select>
+	<select bind:value={selectedDay}>
+		<option value="Monday">Monday</option>
+		<option value="Tuesday">Tuesday</option>
+		<option value="Wednesday">Wednesday</option>
+		<option value="Thursday">Thursday</option>
+		<option value="Friday">Friday</option>
+		<option value="Saturday">Saturday</option>
+		<option value="Sunday">Sunday</option>
+	</select>
 </div>
 
 <div class="search-container">
-  <input
-    type="text"
-    placeholder="Search location..."
-    bind:value={searchQuery}
-    on:input={handleSearch}
-  />
+	<input
+		type="text"
+		placeholder="Search location..."
+		bind:value={searchQuery}
+	/>
+	<button on:click={handleUpdate}>Search</button>
 </div>
+
+<div class="container">
+	<div class="side-panel">
+		<ul>
+			{#each courseData as course}
+				<li>
+					<strong>{course.subject} {course.course}</strong> - {course.title}
+				</li>
+			{/each}
+		</ul>
+	</div>
+	<div class="map-container">
+		<!-- Your map and other content here -->
+	</div>
+</div>
+
 <div class="full-screen" bind:this={container}></div>
 
 <style>
+	.container {
+		display: flex;
+	}
+
+	.side-panel {
+		width: 250px; /* Adjust width as needed */
+		overflow-y: auto; /* Scroll if content is too long */
+		background-color: #f8f8f8; /* Background color for the side panel */
+		padding: 10px;
+	}
+	.map-container {
+		flex-grow: 1;
+	}
 	.search-container {
 		position: absolute;
 		top: 10px;
@@ -526,5 +558,4 @@
 		font-family: Arial, Helvetica, sans-serif;
 		color: blue;
 	}
-
 </style>
