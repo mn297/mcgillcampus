@@ -492,7 +492,4 @@ def main():
 
 
 if __name__ == "__main__":
-    #main()
-    connection = connect_to_database()
-    if connection is not None:
-        get_courses_at_given_time_with_location(connection, "Wednesday", "13:30")
+    main()
