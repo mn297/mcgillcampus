@@ -12,7 +12,7 @@
   let markerCluster: MarkerClusterer | undefined;
 
   let searchQuery = "";
-  let timeValue = 0; // Slider value
+  let timeValue = 515; // Slider value
   let selectedDay = "Monday"; // Default value
 
   // Function to convert slider value to time string
@@ -199,6 +199,7 @@
 
           // Format the content to display in the InfoWindow
           const infoContent = `
+
 						<div>
 						<h3>${data.subject} ${data.course}</h3>
 						<p>Location: ${data.location_name}</p>
@@ -270,7 +271,26 @@
     />
   </div>
 </div>
+<div class="date-selector">
+  <select bind:value={selectedDay}>
+    <option value="Monday">Monday</option>
+    <option value="Tuesday">Tuesday</option>
+    <option value="Wednesday">Wednesday</option>
+    <option value="Thursday">Thursday</option>
+    <option value="Friday">Friday</option>
+    <option value="Saturday">Saturday</option>
+    <option value="Sunday">Sunday</option>
+  </select>
+</div>
 
+<div class="search-container">
+  <input
+    type="text"
+    placeholder="Search location..."
+    bind:value={searchQuery}
+    on:input={handleSearch}
+  />
+</div>
 <div class="full-screen" bind:this={container}></div>
 
 <style>
