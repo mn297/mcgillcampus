@@ -23,47 +23,100 @@
 	let selectedDay = "Monday"; // Default value
 
 	class CustomMarker extends google.maps.OverlayView {
-		constructor(latlng, map, label) {
+		private image: string;
+		private div?: HTMLElement;
+		private label: string;
+		private map: google.maps.Map | undefined;
+		private position: google.maps.LatLng | undefined;
+
+		constructor(position, label, map) {
 			super();
-			this.latlng = latlng;
+			this.position = position;
 			this.label = label;
-			this.setMap(map);
+			this.map = map;
+		}
+
+		/**
+		 * onAdd is called when the map's panes are ready and the overlay has been
+		 * added to the map.
+		 */
+		onAdd() {
+			this.div = document.createElement("div");
+			this.div.style.borderStyle = "none";
+			this.div.style.borderWidth = "0px";
+			this.div.style.position = "absolute";
+			this.div.style.cursor = "pointer";
+			this.div.style.fontSize = "16px"; // Set your desired font size
+			this.div.style.color = "black"; // Set font color
+			this.div.innerText = this.label; // Set the label text
+
+			// Add the element to the "overlayLayer" pane.
+			const panes = this.getPanes()!;
+
+			panes.overlayLayer.appendChild(this.div);
 		}
 
 		draw() {
-			var div = this.div;
-			if (!div) {
-				div = this.div = document.createElement("div");
-				div.style.position = "absolute";
-				div.style.cursor = "pointer";
-				div.style.fontSize = "16px"; // Set your desired font size here
-				div.style.color = "black"; // Set font color
-				div.innerText = this.label;
+			const overlayProjection = this.getProjection();
 
-				google.maps.event.addDomListener(div, "click", (event) => {
-					google.maps.event.trigger(this, "click");
-				});
-
-				var panes = this.getPanes();
-				panes.overlayMouseTarget.appendChild(div);
+			// Check if the projection is available
+			if (!overlayProjection) {
+				// If not, defer the drawing
+				requestAnimationFrame(() => this.draw());
+				return;
 			}
 
-			var point = this.getProjection().fromLatLngToDivPixel(this.latlng);
+			// Proceed with drawing if the projection is available
+			const point = overlayProjection.fromLatLngToDivPixel(this.latlng);
+
 			if (point) {
-				div.style.left = point.x + "px";
-				div.style.top = point.y + "px";
+				this.div.style.left = point.x + "px";
+				this.div.style.top = point.y + "px";
 			}
 		}
 
-		remove() {
+		/**
+		 * The onRemove() method will be called automatically from the API if
+		 * we ever set the overlay's map property to 'null'.
+		 */
+		onRemove() {
 			if (this.div) {
-				this.div.parentNode.removeChild(this.div);
-				this.div = null;
+				(this.div.parentNode as HTMLElement).removeChild(this.div);
+				delete this.div;
 			}
 		}
 
-		getPosition() {
-			return this.latlng;
+		/**
+		 *  Set the visibility to 'hidden' or 'visible'.
+		 */
+		hide() {
+			if (this.div) {
+				this.div.style.visibility = "hidden";
+			}
+		}
+
+		show() {
+			if (this.div) {
+				this.div.style.visibility = "visible";
+			}
+		}
+
+		toggle() {
+			if (this.div) {
+				if (this.div.style.visibility === "hidden") {
+					this.show();
+				} else {
+					this.hide();
+				}
+			}
+		}
+
+		toggleDOM(map: google.maps.Map) {
+			if (this.getMap()) {
+				this.setMap(null);
+			} else {
+				this.setMap(map);
+			}
 		}
 	}
 
@@ -240,6 +293,8 @@
 						glyph: label,
 						glyphColor: "black",
 					});
+
+					// CUSTOM MARKER (TODO)----------------------------------------------
 					const temp_lat = Number.parseFloat(data.latitude);
 					const temp_lng = Number.parseFloat(data.longitude);
 					if (!isNaN(temp_lat) && !isNaN(temp_lng)) {
@@ -247,7 +302,16 @@
 							temp_lat,
 							temp_lat,
 						);
-						new CustomMarker(position, map, label);
+
+						const custom_marker = new CustomMarker(
+							position,
+							map,
+							label,
+						);
+						custom_marker.setMap(map);
+
+						console.log("custom_marker:", custom_marker);
+						custom_marker.draw();
 					}
 
 					// Ensure latitude and longitude are parsed as numbers
@@ -274,6 +338,7 @@
 						content: pinGlyph.element,
 					});
 
+					// INFO WINDOW----------------------------------------------
 					// Format the content to display in the InfoWindow
 					const infoContent = `
 
