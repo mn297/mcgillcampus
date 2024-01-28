@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def process_time_range(time_range_str):
     try:
         # Check if the time range is not a standard time format (e.g., 'TBA')
@@ -29,7 +30,7 @@ def process_time_range(time_range_str):
 # Fetching environment variables
 db_host = os.getenv("DB_HOST")
 db_user = os.getenv("DB_USER")
-db_password = os.getenv('DB_PASSWORD')
+db_password = os.getenv("DB_PASSWORD")
 db_name = os.getenv("DB_NAME")
 
 
@@ -41,7 +42,7 @@ def connect_to_database():
         #     user="root",  # Replace with your username
         #     password= db_password,
         # )  # Replace with your password
-        
+
         connection = mysql.connector.connect(
             host=db_host, user=db_user, password=db_password, database=db_name
         )
@@ -51,6 +52,31 @@ def connect_to_database():
     except Error as e:
         print("Error while connecting to MySQL", e)
         return None
+
+
+def drop_tables(connection):
+    cursor = connection.cursor()
+
+    # SQL to drop sections table
+    drop_sections_table = "DROP TABLE IF EXISTS campus_w24.sections;"
+
+    # SQL to drop locations table
+    drop_locations_table = "DROP TABLE IF EXISTS campus_w24.locations;"
+
+    # SQL to drop courses table
+    drop_courses_table = "DROP TABLE IF EXISTS campus_w24.courses;"
+
+    try:
+        # Execute the SQL commands in the reverse order of table creation
+        cursor.execute(drop_sections_table)
+        cursor.execute(drop_locations_table)
+        cursor.execute(drop_courses_table)
+        connection.commit()
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        connection.rollback()
+    finally:
+        cursor.close()
 
 
 # TODO parametrize database name
@@ -401,6 +427,7 @@ def import_csv_data(connection, csv_file_path):
 def main():
     connection = connect_to_database()
     if connection is not None:
+        drop_tables(connection)
         create_table_if_not_exists(connection)
         import_csv_data(connection, "A_H_W24.csv")
         import_csv_data(connection, "I_Z_W24.csv")
