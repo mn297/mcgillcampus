@@ -12,7 +12,8 @@
 	let markerCluster: MarkerClusterer | undefined;
 
 	let searchQuery = "";
-	let timeValue = 0; // Slider value
+	let timeValue = 515; // Default to 480 minutes (08:35)
+
 	let selectedDay = "Monday"; // Default value
 
 	// Function to convert slider value to time string
@@ -279,6 +280,7 @@
 		on:input={handleSearch}
 	/>
 </div>
+
 <div class="full-screen" bind:this={container}></div>
 
 <style>
