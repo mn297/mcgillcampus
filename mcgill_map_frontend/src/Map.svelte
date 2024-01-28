@@ -285,6 +285,7 @@
 				});
 
 				const newMarkers = courseData.map((data, i) => {
+					// PIN GLYPH----------------------------------------------
 					const label = `${data.subject.substring(
 						0,
 						4,
@@ -293,6 +294,10 @@
 						glyph: label,
 						glyphColor: "black",
 					});
+					// Ensure latitude and longitude are parsed as numbers
+					const lat = parseFloat(data.latitude);
+					const lng = parseFloat(data.longitude);
+					const position = { lat, lng };
 
 					// CUSTOM MARKER (TODO)----------------------------------------------
 					const temp_lat = Number.parseFloat(data.latitude);
@@ -314,10 +319,6 @@
 						custom_marker.draw();
 					}
 
-					// Ensure latitude and longitude are parsed as numbers
-					const lat = parseFloat(data.latitude);
-					const lng = parseFloat(data.longitude);
-
 					// Debugging: Log the values and their types
 					//   console.log(`Latitude: ${lat}, Longitude: ${lng}`);
 					//   console.log(
@@ -330,14 +331,12 @@
 						return null; // Skip this iteration
 					}
 
-					const position = { lat, lng };
-
+					// DEFAULT MARKER----------------------------------------------
 					const marker = new AdvancedMarkerElement({
 						position, // Using the transformed position
 						map: map,
 						content: pinGlyph.element,
 					});
-
 					// INFO WINDOW----------------------------------------------
 					// Format the content to display in the InfoWindow
 					const infoContent = `
@@ -470,16 +469,14 @@
 	}
 
 	.time-slider {
-		position: absolute;
-		bottom: 10px;
-		left: 50%;
-		transform: translateX(-50%);
 		z-index: 10;
 	}
+
 	.full-screen {
 		width: 97vw;
 		height: 90vh;
 	}
+
 	.search-container {
 		position: absolute;
 		top: 10px;
