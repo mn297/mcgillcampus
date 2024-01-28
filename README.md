@@ -15,7 +15,7 @@ Ever wanted to see all courses happening at a specific time and day at McGill? W
 ### Instructions
 <ol>
   <li>Create new schema in mySQL Workbench called "campus_w24"</li>
-  <li>Make a new environment variable on your machine called DB_PASSWORD with your mySQL Server password</li>
+  <li>Set up the two .env files with the right information</li>
   <li><code>git clone https://github.com/mn297/mcgillcampus.git </code></li>
   <li><code>cd</code> to project directory</li>
   <li><code>python app.py </code></li>
