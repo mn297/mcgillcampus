@@ -479,7 +479,7 @@
 					const infoContent = `
 						<div>
 							<b>
-						<h3>${data.subject} ${data.course} - ${course_name}</h3>
+						<h3>${data.subject} ${data.course} - ${course_name} - (${data.type})</h3>
 						<p><u>Location</u>: ${data.location_name}</p>
                         <p><u>Time</u>: ${data.time}</p>
                         <p><u>Instructor</u>: ${data.instructor}</p>
@@ -685,6 +685,8 @@
 		background-color: #f8f8f8; /* Background color for the side panel */
 		padding: 10px;
 		height: 90vh; /* Match the height of the map container */
+		font-family: "Arial", sans-serif; /* Specify your preferred font family */
+		font-size: 16px; /* Adjust the font size as needed */
 	}
 
 	.map-container {
@@ -714,7 +716,7 @@
 		color: white;
 		text-align: center;
 		cursor: pointer;
-		border-radius: 5px; /* Adjust as needed */
+		border-radius: 100px; /* Adjust as needed */
 	}
 
 	.time-slider {
