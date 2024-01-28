@@ -1,4 +1,5 @@
 # The McGill Map
+DEVPOST: https://devpost.com/software/the-mcgill-map
 
 Ever wanted to see all courses happening at a specific time and day at McGill? Well now you can!
 
