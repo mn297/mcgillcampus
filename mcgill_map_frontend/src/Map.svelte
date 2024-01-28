@@ -199,6 +199,7 @@
 
           // Format the content to display in the InfoWindow
           const infoContent = `
+
 						<div>
 						<h3>${data.subject} ${data.course}</h3>
 						<p>Location: ${data.location_name}</p>
@@ -270,6 +271,7 @@
     on:input={handleSearch}
   />
 </div>
+
 <div class="full-screen" bind:this={container}></div>
 
 <style>
@@ -311,4 +313,5 @@
     width: 300px;
     font-size: 1rem;
   }
+
 </style>
